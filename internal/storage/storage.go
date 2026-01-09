@@ -1,0 +1,160 @@
+package storage
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
+	"github.com/dkrichards86/brag/internal/models"
+)
+
+const (
+	bragDir  = ".brag"
+	winsFile = "wins.txt"
+)
+
+// Storage handles file operations for wins
+type Storage struct {
+	filePath string
+}
+
+// New creates a new Storage instance
+func New() (*Storage, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	bragPath := filepath.Join(home, bragDir)
+	filePath := filepath.Join(bragPath, winsFile)
+
+	// Create directory if it doesn't exist
+	if err := os.MkdirAll(bragPath, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create brag directory: %w", err)
+	}
+
+	// Create file if it doesn't exist
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		if _, err := os.Create(filePath); err != nil {
+			return nil, fmt.Errorf("failed to create wins file: %w", err)
+		}
+	}
+
+	return &Storage{filePath: filePath}, nil
+}
+
+// GetFilePath returns the path to the wins file
+func (s *Storage) GetFilePath() string {
+	return s.filePath
+}
+
+// AddWin appends a new win to the file
+func (s *Storage) AddWin(message string, timestamp time.Time) error {
+	win := &models.Win{
+		Timestamp: timestamp,
+		Message:   message,
+	}
+
+	f, err := os.OpenFile(s.filePath, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open wins file: %w", err)
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(win.Format() + "\n")
+	if err != nil {
+		return fmt.Errorf("failed to write win: %w", err)
+	}
+
+	return nil
+}
+
+// ReadAllWins reads all wins from the file
+func (s *Storage) ReadAllWins() ([]*models.Win, error) {
+	f, err := os.Open(s.filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open wins file: %w", err)
+	}
+	defer f.Close()
+
+	var wins []*models.Win
+	scanner := bufio.NewScanner(f)
+	lineNum := 0
+
+	for scanner.Scan() {
+		lineNum++
+		line := scanner.Text()
+		if line == "" {
+			continue
+		}
+
+		win, err := models.ParseWin(line)
+		if err != nil {
+			// Skip invalid lines with a warning
+			fmt.Fprintf(os.Stderr, "Warning: skipping invalid line %d: %v\n", lineNum, err)
+			continue
+		}
+
+		wins = append(wins, win)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error reading wins file: %w", err)
+	}
+
+	return wins, nil
+}
+
+// WriteWins writes all wins back to the file (for edit/delete operations)
+func (s *Storage) WriteWins(wins []*models.Win) error {
+	f, err := os.OpenFile(s.filePath, os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open wins file: %w", err)
+	}
+	defer f.Close()
+
+	for _, win := range wins {
+		_, err = f.WriteString(win.Format() + "\n")
+		if err != nil {
+			return fmt.Errorf("failed to write win: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// DeleteWin deletes a win at the specified index (0-based)
+func (s *Storage) DeleteWin(index int) error {
+	wins, err := s.ReadAllWins()
+	if err != nil {
+		return err
+	}
+
+	if index < 0 || index >= len(wins) {
+		return fmt.Errorf("invalid index: %d", index)
+	}
+
+	// Remove the win at the specified index
+	wins = append(wins[:index], wins[index+1:]...)
+
+	return s.WriteWins(wins)
+}
+
+// UpdateWin updates a win at the specified index (0-based)
+func (s *Storage) UpdateWin(index int, message string) error {
+	wins, err := s.ReadAllWins()
+	if err != nil {
+		return err
+	}
+
+	if index < 0 || index >= len(wins) {
+		return fmt.Errorf("invalid index: %d", index)
+	}
+
+	// Update the message, keep the original timestamp
+	wins[index].Message = message
+
+	return s.WriteWins(wins)
+}
