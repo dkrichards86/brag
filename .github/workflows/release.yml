@@ -1,0 +1,100 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Triggers on version tags like v1.0.0, v1.2.3, etc.
+
+permissions:
+  contents: write  # Required to create releases
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for changelog
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Run tests
+        run: go test -v ./...
+
+      - name: Build all platforms
+        run: |
+          # Linux
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/brag-linux-amd64
+          GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/brag-linux-arm64
+
+          # macOS
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/brag-darwin-amd64
+          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/brag-darwin-arm64
+
+          # Windows
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/brag-windows-amd64.exe
+
+      - name: Create checksums
+        run: |
+          cd dist
+          sha256sum * > checksums.txt
+          cat checksums.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/brag-linux-amd64
+            dist/brag-linux-arm64
+            dist/brag-darwin-amd64
+            dist/brag-darwin-arm64
+            dist/brag-windows-amd64.exe
+            dist/checksums.txt
+          draft: false
+          prerelease: false
+          generate_release_notes: true  # Automatically generates changelog from commits
+          body: |
+            ## Installation
+
+            Download the appropriate binary for your platform:
+
+            **Linux:**
+            ```bash
+            # AMD64
+            curl -LO https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/brag-linux-amd64
+            chmod +x brag-linux-amd64
+            sudo mv brag-linux-amd64 /usr/local/bin/brag
+
+            # ARM64
+            curl -LO https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/brag-linux-arm64
+            chmod +x brag-linux-arm64
+            sudo mv brag-linux-arm64 /usr/local/bin/brag
+            ```
+
+            **macOS:**
+            ```bash
+            # Intel
+            curl -LO https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/brag-darwin-amd64
+            chmod +x brag-darwin-amd64
+            sudo mv brag-darwin-amd64 /usr/local/bin/brag
+
+            # Apple Silicon
+            curl -LO https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/brag-darwin-arm64
+            chmod +x brag-darwin-arm64
+            sudo mv brag-darwin-arm64 /usr/local/bin/brag
+            ```
+
+            **Windows:**
+            Download `brag-windows-amd64.exe` and add it to your PATH.
+
+            **Verify checksums:**
+            ```bash
+            curl -LO https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/checksums.txt
+            sha256sum -c checksums.txt
+            ```

@@ -85,6 +85,20 @@ build-all: ## Build for all platforms
 
 ci: deps test lint build ## Run CI pipeline locally
 
+release: ## Create a new release (requires VERSION=vX.Y.Z)
+	@if [ -z "$(VERSION)" ]; then \
+		echo "$(BLUE)Usage: make release VERSION=v1.0.0$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)Creating release $(VERSION)...$(NC)"
+	@if git rev-parse $(VERSION) >/dev/null 2>&1; then \
+		echo "Tag $(VERSION) already exists!"; \
+		exit 1; \
+	fi
+	@git tag -a $(VERSION) -m "Release $(VERSION)"
+	@git push origin $(VERSION)
+	@echo "$(BLUE)Release $(VERSION) created and pushed. GitHub Actions will build and publish the binaries.$(NC)"
+
 help: ## Display this help message
 	@echo "Available targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(BLUE)%-20s$(NC) %s\n", $$1, $$2}'

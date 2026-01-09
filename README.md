@@ -20,24 +20,55 @@ By logging micro-wins as they happen, you'll have a rich history to draw from du
 
 ## Installation
 
-### From Source
+### Pre-built Binaries (Recommended)
 
+Download the latest release for your platform from the [releases page](https://github.com/dkrichards86/brag/releases).
+
+**Linux (AMD64):**
 ```bash
-git clone https://github.com/dkrichards86/brag.git
-cd brag
-go build -o brag
+curl -LO https://github.com/dkrichards86/brag/releases/latest/download/brag-linux-amd64
+chmod +x brag-linux-amd64
+sudo mv brag-linux-amd64 /usr/local/bin/brag
 ```
 
-You can then move the binary to a directory in your PATH:
-
+**macOS (Apple Silicon):**
 ```bash
-sudo mv brag /usr/local/bin/
+curl -LO https://github.com/dkrichards86/brag/releases/latest/download/brag-darwin-arm64
+chmod +x brag-darwin-arm64
+sudo mv brag-darwin-arm64 /usr/local/bin/brag
 ```
+
+**macOS (Intel):**
+```bash
+curl -LO https://github.com/dkrichards86/brag/releases/latest/download/brag-darwin-amd64
+chmod +x brag-darwin-amd64
+sudo mv brag-darwin-amd64 /usr/local/bin/brag
+```
+
+**Windows:**
+Download `brag-windows-amd64.exe` from the [releases page](https://github.com/dkrichards86/brag/releases) and add it to your PATH.
 
 ### Using go install
 
 ```bash
 go install github.com/dkrichards86/brag@latest
+```
+
+**Note:** This installs the binary to `$GOPATH/bin` (typically `~/go/bin`). Ensure this directory is in your `PATH`:
+
+```bash
+export PATH="$HOME/go/bin:$PATH"
+```
+
+Add this line to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.) to make it permanent.
+
+### From Source
+
+```bash
+git clone https://github.com/dkrichards86/brag.git
+cd brag
+make build
+sudo mv brag /usr/local/bin/
 ```
 
 ## Usage
@@ -199,6 +230,46 @@ brag review --tag leadership
 
 MIT License - see LICENSE file for details.
 
+## Development
+
+### Building from Source
+
+```bash
+# Build for your platform
+make build
+
+# Build for all platforms
+make build-all
+
+# Run tests
+make test
+
+# Run linter
+make lint
+
+# Run full CI pipeline locally
+make ci
+```
+
+### Creating a Release
+
+For maintainers, to create a new release:
+
+```bash
+make release VERSION=v1.0.0
+```
+
+This will create and push a git tag, which triggers GitHub Actions to build and publish binaries. See [RELEASING.md](RELEASING.md) for details.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+### Development Workflow
+
+1. Fork and clone the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests: `make test`
+5. Run linter: `make lint`
+6. Submit a pull request
