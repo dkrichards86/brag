@@ -181,6 +181,28 @@ Search for multiple words:
 brag search "fixed bug"
 ```
 
+### Managing Tags
+
+List all tags and their frequency (sorted by most used):
+
+```bash
+brag tags
+```
+
+Add a tag to an existing win by line number:
+
+```bash
+brag tag 5 work
+```
+
+You can include or omit the `#` prefix:
+
+```bash
+brag tag 5 #backend
+```
+
+The tag command will prevent duplicate tags and notify you if the tag already exists on that win.
+
 ## File Storage
 
 Wins are stored in a plain text file at `~/.brag/wins.txt`.
