@@ -225,6 +225,7 @@ Future enhancements that would fit the design:
 6. **Write Tests First**: Add tests before implementing new functionality
 7. **Run CI Locally**: Use `make ci` before pushing changes
 8. **Check Linter**: All code must pass `make lint` with zero issues
+9. **Update Documentation**: When adding/modifying commands, ALWAYS update [README.md](README.md) with usage examples and explanations
 
 ### Code Style
 
