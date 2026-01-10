@@ -119,6 +119,12 @@ Review only wins with tags (your "macro" wins):
 brag review --tagged
 ```
 
+Review only wins without tags:
+
+```bash
+brag review --untagged
+```
+
 Filter by a specific tag:
 
 ```bash

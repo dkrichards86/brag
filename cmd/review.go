@@ -10,10 +10,11 @@ import (
 )
 
 var (
-	fromDate   string
-	toDate     string
-	tagFilter  string
-	taggedOnly bool
+	fromDate     string
+	toDate       string
+	tagFilter    string
+	taggedOnly   bool
+	untaggedOnly bool
 )
 
 var reviewCmd = &cobra.Command{
@@ -30,6 +31,7 @@ func init() {
 	reviewCmd.Flags().StringVar(&toDate, "to", "", "End date (YYYY/MM/DD or YYYY-MM-DD)")
 	reviewCmd.Flags().StringVar(&tagFilter, "tag", "", "Filter by tag (e.g., 'work' or '#work')")
 	reviewCmd.Flags().BoolVar(&taggedOnly, "tagged", false, "Show only wins that have tags")
+	reviewCmd.Flags().BoolVar(&untaggedOnly, "untagged", false, "Show only wins without tags")
 }
 
 func reviewWins(cmd *cobra.Command, args []string) {
@@ -49,7 +51,7 @@ func reviewWins(cmd *cobra.Command, args []string) {
 	from, to := parseDateRange(fromDate, toDate)
 
 	// Filter wins
-	filteredWins := filterWins(wins, from, to, tagFilter, taggedOnly)
+	filteredWins := filterWins(wins, from, to, tagFilter, taggedOnly, untaggedOnly)
 
 	if len(filteredWins) == 0 {
 		fmt.Println("No wins found for the specified criteria.")
@@ -103,7 +105,7 @@ func parseDateRange(fromStr, toStr string) (time.Time, time.Time) {
 	return from, to
 }
 
-func filterWins(wins []*models.Win, from, to time.Time, tag string, taggedOnly bool) []*models.Win {
+func filterWins(wins []*models.Win, from, to time.Time, tag string, taggedOnly, untaggedOnly bool) []*models.Win {
 	var filtered []*models.Win
 
 	for _, win := range wins {
@@ -114,6 +116,11 @@ func filterWins(wins []*models.Win, from, to time.Time, tag string, taggedOnly b
 
 		// Tagged filter - only show wins that have at least one tag
 		if taggedOnly && len(win.Tags) == 0 {
+			continue
+		}
+
+		// Untagged filter - only show wins without tags
+		if untaggedOnly && len(win.Tags) > 0 {
 			continue
 		}
 

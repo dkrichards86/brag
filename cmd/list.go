@@ -44,7 +44,7 @@ func listWins(cmd *cobra.Command, args []string) {
 	var filteredWins []*models.Win
 	if listFromDate != "" || listToDate != "" {
 		from, to := parseDateRange(listFromDate, listToDate)
-		filteredWins = filterWins(wins, from, to, "", false)
+		filteredWins = filterWins(wins, from, to, "", false, false)
 	} else {
 		filteredWins = wins
 	}
