@@ -93,7 +93,7 @@ func TestListWinsIntegration(t *testing.T) {
 		},
 		{
 			name:          "list with only to date",
-			fromDate:      "2026-01-01",  // Specify explicit from date
+			fromDate:      "2026-01-01", // Specify explicit from date
 			toDate:        "2026-01-05",
 			expectedCount: 2,
 			expectedFirst: "First win #work",

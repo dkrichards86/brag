@@ -13,12 +13,12 @@ func TestParseDateRange(t *testing.T) {
 	now := time.Now()
 
 	tests := []struct {
-		name         string
-		fromStr      string
-		toStr        string
+		name          string
+		fromStr       string
+		toStr         string
 		checkRelative bool // For relative dates (using now)
-		expectedFrom time.Time
-		expectedTo   time.Time
+		expectedFrom  time.Time
+		expectedTo    time.Time
 	}{
 		{
 			name:          "no dates - defaults to last 7 days",

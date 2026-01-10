@@ -326,19 +326,19 @@ func TestDeleteWinMultipleTimes(t *testing.T) {
 
 	// Delete multiple wins (always delete index 1 to test shifting)
 	deletions := []struct {
-		index           int
+		index             int
 		expectedRemaining []string
 	}{
 		{
-			index:           1, // Delete "Win 2"
+			index:             1, // Delete "Win 2"
 			expectedRemaining: []string{"Win 1", "Win 3", "Win 4", "Win 5"},
 		},
 		{
-			index:           1, // Delete "Win 3" (now at index 1)
+			index:             1, // Delete "Win 3" (now at index 1)
 			expectedRemaining: []string{"Win 1", "Win 4", "Win 5"},
 		},
 		{
-			index:           1, // Delete "Win 4" (now at index 1)
+			index:             1, // Delete "Win 4" (now at index 1)
 			expectedRemaining: []string{"Win 1", "Win 5"},
 		},
 	}
