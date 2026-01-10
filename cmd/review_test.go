@@ -179,6 +179,7 @@ func TestFilterWins(t *testing.T) {
 		to            time.Time
 		tag           string
 		taggedOnly    bool
+		untaggedOnly  bool
 		expectedCount int
 		expectedMsgs  []string
 	}{
@@ -188,6 +189,7 @@ func TestFilterWins(t *testing.T) {
 			to:            time.Date(2026, 1, 31, 23, 59, 59, 0, time.UTC),
 			tag:           "",
 			taggedOnly:    false,
+			untaggedOnly:  false,
 			expectedCount: 5,
 			expectedMsgs:  []string{"Win 1 #work", "Win 2 #personal", "Win 3", "Win 4 #work #backend", "Win 5 #personal #health"},
 		},
@@ -197,6 +199,7 @@ func TestFilterWins(t *testing.T) {
 			to:            time.Date(2026, 1, 15, 23, 59, 59, 0, time.UTC),
 			tag:           "",
 			taggedOnly:    false,
+			untaggedOnly:  false,
 			expectedCount: 3,
 			expectedMsgs:  []string{"Win 2 #personal", "Win 3", "Win 4 #work #backend"},
 		},
@@ -206,6 +209,7 @@ func TestFilterWins(t *testing.T) {
 			to:            time.Date(2026, 1, 31, 23, 59, 59, 0, time.UTC),
 			tag:           "#work",
 			taggedOnly:    false,
+			untaggedOnly:  false,
 			expectedCount: 2,
 			expectedMsgs:  []string{"Win 1 #work", "Win 4 #work #backend"},
 		},
@@ -215,6 +219,7 @@ func TestFilterWins(t *testing.T) {
 			to:            time.Date(2026, 1, 31, 23, 59, 59, 0, time.UTC),
 			tag:           "personal",
 			taggedOnly:    false,
+			untaggedOnly:  false,
 			expectedCount: 2,
 			expectedMsgs:  []string{"Win 2 #personal", "Win 5 #personal #health"},
 		},
@@ -224,6 +229,7 @@ func TestFilterWins(t *testing.T) {
 			to:            time.Date(2026, 1, 31, 23, 59, 59, 0, time.UTC),
 			tag:           "",
 			taggedOnly:    true,
+			untaggedOnly:  false,
 			expectedCount: 4,
 			expectedMsgs:  []string{"Win 1 #work", "Win 2 #personal", "Win 4 #work #backend", "Win 5 #personal #health"},
 		},
@@ -233,8 +239,19 @@ func TestFilterWins(t *testing.T) {
 			to:            time.Date(2026, 1, 31, 23, 59, 59, 0, time.UTC),
 			tag:           "backend",
 			taggedOnly:    true,
+			untaggedOnly:  false,
 			expectedCount: 1,
 			expectedMsgs:  []string{"Win 4 #work #backend"},
+		},
+		{
+			name:          "untagged only",
+			from:          time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			to:            time.Date(2026, 1, 31, 23, 59, 59, 0, time.UTC),
+			tag:           "",
+			taggedOnly:    false,
+			untaggedOnly:  true,
+			expectedCount: 1,
+			expectedMsgs:  []string{"Win 3"},
 		},
 		{
 			name:          "narrow date range",
@@ -242,6 +259,7 @@ func TestFilterWins(t *testing.T) {
 			to:            time.Date(2026, 1, 10, 23, 59, 59, 0, time.UTC),
 			tag:           "",
 			taggedOnly:    false,
+			untaggedOnly:  false,
 			expectedCount: 1,
 			expectedMsgs:  []string{"Win 3"},
 		},
@@ -251,6 +269,7 @@ func TestFilterWins(t *testing.T) {
 			to:            time.Date(2026, 1, 31, 23, 59, 59, 0, time.UTC),
 			tag:           "nonexistent",
 			taggedOnly:    false,
+			untaggedOnly:  false,
 			expectedCount: 0,
 			expectedMsgs:  []string{},
 		},
@@ -260,6 +279,7 @@ func TestFilterWins(t *testing.T) {
 			to:            time.Date(2025, 12, 31, 23, 59, 59, 0, time.UTC),
 			tag:           "",
 			taggedOnly:    false,
+			untaggedOnly:  false,
 			expectedCount: 0,
 			expectedMsgs:  []string{},
 		},
@@ -267,7 +287,7 @@ func TestFilterWins(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			filtered := filterWins(testWins, tt.from, tt.to, tt.tag, tt.taggedOnly)
+			filtered := filterWins(testWins, tt.from, tt.to, tt.tag, tt.taggedOnly, tt.untaggedOnly)
 
 			if len(filtered) != tt.expectedCount {
 				t.Errorf("filtered count = %d, want %d", len(filtered), tt.expectedCount)
@@ -331,7 +351,7 @@ func TestReviewWinsIntegration(t *testing.T) {
 	}
 
 	from, to := parseDateRange("", "")
-	filtered := filterWins(wins, from, to, "", false)
+	filtered := filterWins(wins, from, to, "", false, false)
 
 	// Should get the two recent wins (within last 7 days)
 	if len(filtered) != 2 {
@@ -339,7 +359,7 @@ func TestReviewWinsIntegration(t *testing.T) {
 	}
 
 	// Filter by tag
-	tagFiltered := filterWins(wins, from, to, "work", false)
+	tagFiltered := filterWins(wins, from, to, "work", false, false)
 	if len(tagFiltered) != 1 {
 		t.Errorf("tag filtered count = %d, want 1", len(tagFiltered))
 	}
@@ -390,7 +410,7 @@ func TestFilterWinsEdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			filtered := filterWins(testWins, tt.from, tt.to, "", false)
+			filtered := filterWins(testWins, tt.from, tt.to, "", false, false)
 
 			if len(filtered) != tt.expectedCount {
 				t.Errorf("filtered count = %d, want %d", len(filtered), tt.expectedCount)

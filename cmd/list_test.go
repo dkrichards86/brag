@@ -111,7 +111,7 @@ func TestListWinsIntegration(t *testing.T) {
 			var filteredWins []*models.Win
 			if tt.fromDate != "" || tt.toDate != "" {
 				from, to := parseDateRange(tt.fromDate, tt.toDate)
-				filteredWins = filterWins(wins, from, to, "", false)
+				filteredWins = filterWins(wins, from, to, "", false, false)
 			} else {
 				filteredWins = wins
 			}
@@ -264,7 +264,7 @@ func TestListWinsDateFiltering(t *testing.T) {
 
 	// Test filtering by year
 	from, to := parseDateRange("2026-01-01", "2026-01-31")
-	filtered := filterWins(wins, from, to, "", false)
+	filtered := filterWins(wins, from, to, "", false, false)
 
 	if len(filtered) != 1 {
 		t.Errorf("filtered count = %d, want 1 (only January 2026 win)", len(filtered))
