@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/dkrichards86/brag/internal/models"
-	"github.com/dkrichards86/brag/internal/storage"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +33,7 @@ func init() {
 }
 
 func reviewWins(cmd *cobra.Command, args []string) {
-	store, err := storage.New()
+	store, err := getStorage()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)

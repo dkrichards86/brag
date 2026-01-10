@@ -181,6 +181,28 @@ Search for multiple words:
 brag search "fixed bug"
 ```
 
+### Managing Tags
+
+List all tags and their frequency (sorted by most used):
+
+```bash
+brag tags
+```
+
+Add a tag to an existing win by line number:
+
+```bash
+brag tag 5 work
+```
+
+You can include or omit the `#` prefix:
+
+```bash
+brag tag 5 #backend
+```
+
+The tag command will prevent duplicate tags and notify you if the tag already exists on that win.
+
 ## File Storage
 
 Wins are stored in a plain text file at `~/.brag/wins.txt`.
@@ -195,6 +217,41 @@ The format is simple and human-readable:
 ```
 
 You can manually edit this file if needed.
+
+### Configuring Storage Location
+
+You can customize where brag stores your wins using either CLI flags or environment variables:
+
+**Using CLI flags** (best for one-time use):
+```bash
+# Use a different directory
+brag --brag-dir=".brag-work" "Fixed production issue #work"
+
+# Use a different file name
+brag --brag-dir=".brag" --wins-file="work-wins.txt" review
+
+# Both together
+brag --brag-dir=".my-brags" --wins-file="2026.txt" list
+```
+
+**Using environment variables** (best for entire sessions):
+```bash
+# Set for current session
+export BRAG_DIR=".brag-work"
+export BRAG_FILE="wins.txt"
+brag "Testing custom storage"
+
+# Or inline for a single command
+BRAG_DIR=".brag-test" brag "Temporary test win"
+```
+
+**Priority order**: CLI flags > Environment variables > Defaults
+
+This is useful for:
+- Separating work and personal wins
+- Testing without affecting your real data
+- Using different storage per project
+- Year-based or project-based organization
 
 ## Macro Wins
 

@@ -11,7 +11,7 @@ This file provides context for AI assistants (like Claude) working on the brag p
 ### Technology Stack
 - **Language**: Go 1.x
 - **CLI Framework**: Cobra (github.com/spf13/cobra)
-- **Storage**: Plain text file (`~/.brag/wins.txt`)
+- **Storage**: Plain text file (default: `~/.brag/wins.txt`, configurable)
 - **No external dependencies** for runtime (beyond Go stdlib and Cobra)
 
 ### Project Structure
@@ -86,6 +86,37 @@ brag Fixed bug #work #backend     # Wrong - shell treats # as comment
 ```
 
 This is a shell limitation, not a tool limitation. Documented clearly in README.
+
+### Configurable Storage
+
+Storage location is configurable via CLI flags or environment variables:
+
+**Priority**: CLI flags > Environment variables > Defaults
+
+**Implementation** ([cmd/root.go:54-83](cmd/root.go#L54-L83)):
+- `getStorage()` helper in root.go handles configuration resolution
+- Checks flags first, then env vars, then defaults
+- Builds path and calls `storage.NewWithPath()`
+- All commands use this central helper (no direct `storage.New()` calls)
+
+**Storage Layer** ([internal/storage/storage.go](internal/storage/storage.go)):
+- `New()`: Uses env vars or defaults (for backward compatibility)
+- `NewWithPath(filePath)`: Direct path specification (used by CLI)
+- `newStorage(filePath)`: Internal helper that creates directories and files
+
+**CLI Flags** (persistent, available on all commands):
+- `--brag-dir`: Override directory name (default: `.brag`)
+- `--wins-file`: Override file name (default: `wins.txt`)
+
+**Environment Variables**:
+- `BRAG_DIR`: Override directory name
+- `BRAG_FILE`: Override file name
+
+**Use Cases**:
+- Testing without affecting real data (`--brag-dir=".brag-test"`)
+- Separate work/personal wins (`BRAG_DIR=".brag-work"`)
+- Year-based organization (`--wins-file="2026.txt"`)
+- Project-specific tracking
 
 ## Data Models
 
@@ -169,6 +200,7 @@ When testing or extending this tool:
 6. **Write Tests First**: All new functionality should have tests before implementation
 7. **Table-Driven Tests**: Use table-driven patterns for multiple test cases
 8. **Test Isolation**: Use t.TempDir() for file-based tests to avoid conflicts
+9. **Manual Testing**: Use `--brag-dir=".brag-test"` to avoid polluting real data
 
 ## Extension Ideas
 
@@ -193,6 +225,7 @@ Future enhancements that would fit the design:
 6. **Write Tests First**: Add tests before implementing new functionality
 7. **Run CI Locally**: Use `make ci` before pushing changes
 8. **Check Linter**: All code must pass `make lint` with zero issues
+9. **Update Documentation**: When adding/modifying commands, ALWAYS update [README.md](README.md) with usage examples and explanations
 
 ### Code Style
 
@@ -211,6 +244,8 @@ Future enhancements that would fit the design:
 3. **Date Parsing**: Time.Parse() format string is Go's weird reference date: `2006-01-02 15:04`
 4. **Tag Extraction**: Remember to handle tags with or without leading `#`
 5. **Shell Escaping**: Users must quote hashtags - document this clearly
+6. **Storage in Commands**: Always use `getStorage()` helper, never `storage.New()` directly
+7. **Manual Testing**: Use configurable storage flags to avoid polluting user's real wins file
 
 ## Building and Installing
 

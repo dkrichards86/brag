@@ -3,11 +3,18 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/dkrichards86/brag/internal/storage"
 	"github.com/spf13/cobra"
+)
+
+var (
+	// Storage configuration flags
+	bragDir  string
+	winsFile string
 )
 
 var rootCmd = &cobra.Command{
@@ -31,6 +38,10 @@ var rootCmd = &cobra.Command{
 func init() {
 	// Disable suggestions for unknown commands
 	rootCmd.DisableSuggestions = true
+
+	// Add persistent flags for storage configuration
+	rootCmd.PersistentFlags().StringVar(&bragDir, "brag-dir", "", "Directory for brag storage (default: ~/.brag, env: BRAG_DIR)")
+	rootCmd.PersistentFlags().StringVar(&winsFile, "wins-file", "", "Wins file name (default: wins.txt, env: BRAG_FILE)")
 }
 
 // Execute runs the root command
@@ -41,6 +52,37 @@ func Execute() {
 	}
 }
 
+// getStorage creates a storage instance using flag values, env vars, or defaults
+// Priority: CLI flags > Environment variables > Defaults
+func getStorage() (*storage.Storage, error) {
+	// Determine directory name: flag > env var > default
+	dirName := bragDir
+	if dirName == "" {
+		dirName = os.Getenv("BRAG_DIR")
+	}
+	if dirName == "" {
+		dirName = ".brag"
+	}
+
+	// Determine file name: flag > env var > default
+	fileName := winsFile
+	if fileName == "" {
+		fileName = os.Getenv("BRAG_FILE")
+	}
+	if fileName == "" {
+		fileName = "wins.txt"
+	}
+
+	// Build the full path
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	filePath := filepath.Join(home, dirName, fileName)
+	return storage.NewWithPath(filePath)
+}
+
 // addWin is the default command - adds a new win
 func addWin(cmd *cobra.Command, args []string) {
 	if len(args) == 0 {
@@ -48,7 +90,7 @@ func addWin(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	store, err := storage.New()
+	store, err := getStorage()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)

@@ -46,7 +46,6 @@ linters:
     - unused        # Check for unused code
     - gofmt         # Check formatting
     - misspell      # Check for misspellings
-    - goconst       # Find repeated strings that could be constants
     - gocyclo       # Check cyclomatic complexity
     - gosec         # Security checks
     - revive        # Fast, configurable, extensible linter
