@@ -12,7 +12,7 @@ By logging micro-wins as they happen, you'll have a rich history to draw from du
 
 - Quick win logging with hashtag support
 - Post-dating wins with flexible date formats
-- Review wins by date range
+- List wins by date range with line numbers
 - Filter by tags (including macro wins)
 - Edit and delete specific entries
 - Search through your wins
@@ -99,57 +99,45 @@ Supported date formats:
 - `MM/DD/YYYY` (e.g., `01/08/2026`)
 - `MM-DD-YYYY` (e.g., `01-08-2026`)
 
-### Reviewing Wins
-
-Review wins from the last 7 days (default):
-
-```bash
-brag review
-```
-
-Review wins within a specific date range:
-
-```bash
-brag review --from 2026/01/01 --to 2026/01/09
-```
-
-Review only wins with tags (your "macro" wins):
-
-```bash
-brag review --tagged
-```
-
-Review only wins without tags:
-
-```bash
-brag review --untagged
-```
-
-Filter by a specific tag:
-
-```bash
-brag review --tag work
-```
-
-You can combine filters:
-
-```bash
-brag review --from 2026/01/01 --tag work
-```
-
 ### Listing Wins
 
-List all wins with line numbers:
+List wins from the last 7 days (default) with line numbers:
 
 ```bash
 brag list
 ```
 
-List wins within a date range:
+List wins within a specific date range:
 
 ```bash
 brag list --from 2026/01/01 --to 2026/01/09
 ```
+
+List only wins with tags (your "macro" wins):
+
+```bash
+brag list --tagged
+```
+
+List only wins without tags:
+
+```bash
+brag list --untagged
+```
+
+Filter by a specific tag:
+
+```bash
+brag list --tag work
+```
+
+You can combine filters:
+
+```bash
+brag list --from 2026/01/01 --tag work
+```
+
+**Note on line numbers**: When using filters, `brag list` shows the actual line numbers from the complete wins file, not sequential numbers for filtered results. This ensures line numbers work correctly with `brag delete` and `brag edit`. For example, if you filter by tag and see wins numbered 1, 3, 6, you can use those exact numbers to delete or edit those wins.
 
 ### Editing Wins
 
@@ -172,6 +160,10 @@ Delete a win by line number (with confirmation):
 ```bash
 brag delete 2
 ```
+
+**Important**: Line numbers reflect the current state of the file. After deleting a win, subsequent line numbers shift down. For example, if you delete line 1, what was line 2 becomes the new line 1. To delete multiple wins, either:
+- Delete from highest to lowest: `brag delete 3 && brag delete 2 && brag delete 1`
+- Or re-run `brag list` between deletions to see updated line numbers
 
 ### Searching Wins
 
@@ -268,16 +260,16 @@ brag "Shipped major feature to production #work #backend"
 brag "Mentored junior developer on best practices #mentoring #leadership"
 ```
 
-Then review all tagged wins:
+Then list all tagged wins:
 
 ```bash
-brag review --tagged
+brag list --tagged
 ```
 
-Or review by specific tag:
+Or list by specific tag:
 
 ```bash
-brag review --tag leadership
+brag list --tag leadership
 ```
 
 ## Tips
@@ -285,7 +277,7 @@ brag review --tag leadership
 1. **Make it a habit**: Add wins throughout the day as you accomplish things
 2. **Be specific**: Include enough detail to remember what you did
 3. **Use consistent tags**: Develop a tagging system that works for you (e.g., `#work`, `#learning`, `#mentoring`)
-4. **Review regularly**: Look back at your wins weekly or monthly to stay motivated
+4. **List regularly**: Look back at your wins weekly or monthly to stay motivated with `brag list`
 5. **Tag important wins**: Tag significant achievements so you can filter them later with `--tagged` for year-end reporting
 6. **Use quotes for hashtags**: Remember to quote your message when including tags: `brag "message #tag"`
 
