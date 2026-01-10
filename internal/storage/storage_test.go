@@ -350,6 +350,77 @@ func TestUpdateWin_InvalidIndex(t *testing.T) {
 	}
 }
 
+func TestNewWithEnvironmentVariables(t *testing.T) {
+	tmpDir := t.TempDir()
+	originalHome := os.Getenv("HOME")
+	originalBragDir := os.Getenv("BRAG_DIR")
+	originalWinsFile := os.Getenv("BRAG_FILE")
+
+	defer func() {
+		os.Setenv("HOME", originalHome)
+		os.Setenv("BRAG_DIR", originalBragDir)
+		os.Setenv("BRAG_FILE", originalWinsFile)
+	}()
+
+	os.Setenv("HOME", tmpDir)
+	os.Setenv("BRAG_DIR", ".custom-brag")
+	os.Setenv("BRAG_FILE", "custom-wins.txt")
+
+	storage, err := New()
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	expectedPath := filepath.Join(tmpDir, ".custom-brag", "custom-wins.txt")
+	if storage.GetFilePath() != expectedPath {
+		t.Errorf("GetFilePath() = %v, want %v", storage.GetFilePath(), expectedPath)
+	}
+
+	// Verify directory and file were created
+	if _, err := os.Stat(filepath.Join(tmpDir, ".custom-brag")); os.IsNotExist(err) {
+		t.Error("Expected custom directory to be created")
+	}
+	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
+		t.Error("Expected custom file to be created")
+	}
+}
+
+func TestNewWithPath(t *testing.T) {
+	tmpDir := t.TempDir()
+	customPath := filepath.Join(tmpDir, "my-custom-dir", "my-wins.txt")
+
+	storage, err := NewWithPath(customPath)
+	if err != nil {
+		t.Fatalf("NewWithPath() error = %v", err)
+	}
+
+	if storage.GetFilePath() != customPath {
+		t.Errorf("GetFilePath() = %v, want %v", storage.GetFilePath(), customPath)
+	}
+
+	// Verify directory and file were created
+	if _, err := os.Stat(filepath.Join(tmpDir, "my-custom-dir")); os.IsNotExist(err) {
+		t.Error("Expected custom directory to be created")
+	}
+	if _, err := os.Stat(customPath); os.IsNotExist(err) {
+		t.Error("Expected custom file to be created")
+	}
+
+	// Test that we can add a win to the custom path
+	err = storage.AddWin("Test win", time.Now())
+	if err != nil {
+		t.Errorf("AddWin() error = %v", err)
+	}
+
+	wins, err := storage.ReadAllWins()
+	if err != nil {
+		t.Errorf("ReadAllWins() error = %v", err)
+	}
+	if len(wins) != 1 {
+		t.Errorf("Expected 1 win, got %d", len(wins))
+	}
+}
+
 // setupTestStorage creates a Storage instance in a temporary directory
 func setupTestStorage(t *testing.T) *Storage {
 	t.Helper()

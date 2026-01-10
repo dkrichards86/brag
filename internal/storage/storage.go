@@ -11,8 +11,12 @@ import (
 )
 
 const (
-	bragDir  = ".brag"
-	winsFile = "wins.txt"
+	defaultBragDir  = ".brag"
+	defaultWinsFile = "wins.txt"
+
+	// Environment variables for configuration
+	envBragDir  = "BRAG_DIR"
+	envWinsFile = "BRAG_FILE"
 )
 
 // Storage handles file operations for wins
@@ -20,15 +24,41 @@ type Storage struct {
 	filePath string
 }
 
-// New creates a new Storage instance
+// New creates a new Storage instance using default or environment-configured paths
+// Respects BRAG_DIR and BRAG_FILE environment variables for testing and customization
 func New() (*Storage, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get home directory: %w", err)
 	}
 
-	bragPath := filepath.Join(home, bragDir)
-	filePath := filepath.Join(bragPath, winsFile)
+	// Allow environment variable override for directory name
+	dirName := defaultBragDir
+	if envDir := os.Getenv(envBragDir); envDir != "" {
+		dirName = envDir
+	}
+
+	// Allow environment variable override for file name
+	fileName := defaultWinsFile
+	if envFile := os.Getenv(envWinsFile); envFile != "" {
+		fileName = envFile
+	}
+
+	bragPath := filepath.Join(home, dirName)
+	filePath := filepath.Join(bragPath, fileName)
+
+	return newStorage(filePath)
+}
+
+// NewWithPath creates a new Storage instance with an explicit file path
+// This is useful for testing or when you want complete control over the storage location
+func NewWithPath(filePath string) (*Storage, error) {
+	return newStorage(filePath)
+}
+
+// newStorage is the internal constructor that handles directory and file creation
+func newStorage(filePath string) (*Storage, error) {
+	bragPath := filepath.Dir(filePath)
 
 	// Create directory if it doesn't exist
 	if err := os.MkdirAll(bragPath, 0755); err != nil {
