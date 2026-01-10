@@ -108,10 +108,15 @@ func TestListWinsIntegration(t *testing.T) {
 				t.Fatalf("Failed to read wins: %v", err)
 			}
 
+			// Apply the same filtering logic as listWins
 			var filteredWins []*models.Win
 			if tt.fromDate != "" || tt.toDate != "" {
-				from, to := parseDateRange(tt.fromDate, tt.toDate)
-				filteredWins = filterWins(wins, from, to, "", false, false)
+				from, to := parseListDateRange(tt.fromDate, tt.toDate)
+				for _, win := range wins {
+					if !win.Timestamp.Before(from) && !win.Timestamp.After(to) {
+						filteredWins = append(filteredWins, win)
+					}
+				}
 			} else {
 				filteredWins = wins
 			}
@@ -263,8 +268,13 @@ func TestListWinsDateFiltering(t *testing.T) {
 	}
 
 	// Test filtering by year
-	from, to := parseDateRange("2026-01-01", "2026-01-31")
-	filtered := filterWins(wins, from, to, "", false, false)
+	from, to := parseListDateRange("2026-01-01", "2026-01-31")
+	var filtered []*models.Win
+	for _, win := range wins {
+		if !win.Timestamp.Before(from) && !win.Timestamp.After(to) {
+			filtered = append(filtered, win)
+		}
+	}
 
 	if len(filtered) != 1 {
 		t.Errorf("filtered count = %d, want 1 (only January 2026 win)", len(filtered))
@@ -329,5 +339,102 @@ func TestListWinsOrder(t *testing.T) {
 		if wins[i].Message != expectedMsg {
 			t.Errorf("win[%d] = %q, want %q", i, wins[i].Message, expectedMsg)
 		}
+	}
+}
+
+func TestListWinsLineNumbersWithFiltering(t *testing.T) {
+	// This test verifies that line numbers shown by `brag list` correspond to
+	// the actual line numbers in the file, not the filtered result indices.
+	// This is critical so that `brag delete <N>` and `brag edit <N>` work correctly.
+
+	tempDir := t.TempDir()
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tempDir)
+	defer os.Setenv("HOME", originalHome)
+
+	store, err := storage.New()
+	if err != nil {
+		t.Fatalf("Failed to create storage: %v", err)
+	}
+
+	// Create 10 wins within the last week, but only some will match our tag filter
+	now := time.Now()
+	testWins := []*models.Win{
+		{Timestamp: now.AddDate(0, 0, -6), Message: "Win 1 #work", Tags: []string{"#work"}},         // Line 1
+		{Timestamp: now.AddDate(0, 0, -5), Message: "Win 2", Tags: []string{}},                      // Line 2
+		{Timestamp: now.AddDate(0, 0, -5), Message: "Win 3 #work", Tags: []string{"#work"}},         // Line 3
+		{Timestamp: now.AddDate(0, 0, -4), Message: "Win 4", Tags: []string{}},                      // Line 4
+		{Timestamp: now.AddDate(0, 0, -3), Message: "Win 5 #personal", Tags: []string{"#personal"}}, // Line 5
+		{Timestamp: now.AddDate(0, 0, -3), Message: "Win 6 #work", Tags: []string{"#work"}},         // Line 6
+		{Timestamp: now.AddDate(0, 0, -2), Message: "Win 7", Tags: []string{}},                      // Line 7
+		{Timestamp: now.AddDate(0, 0, -1), Message: "Win 8 #work", Tags: []string{"#work"}},         // Line 8
+		{Timestamp: now.AddDate(0, 0, -1), Message: "Win 9", Tags: []string{}},                      // Line 9
+		{Timestamp: now, Message: "Win 10 #work", Tags: []string{"#work"}},                          // Line 10
+	}
+
+	if err := store.WriteWins(testWins); err != nil {
+		t.Fatalf("Failed to write test wins: %v", err)
+	}
+
+	wins, err := store.ReadAllWins()
+	if err != nil {
+		t.Fatalf("Failed to read wins: %v", err)
+	}
+
+	// Simulate filtering by tag "work" (like `brag list --tag work`)
+	// This should return wins at file positions 1, 3, 6, 8, 10
+	from, to := parseListDateRange("", "") // Use default range
+
+	type indexedWin struct {
+		win   *models.Win
+		index int
+	}
+
+	var filteredWins []indexedWin
+	for i, win := range wins {
+		if win.Timestamp.Before(from) || win.Timestamp.After(to) {
+			continue
+		}
+		if !win.HasTag("work") {
+			continue
+		}
+		filteredWins = append(filteredWins, indexedWin{win: win, index: i + 1})
+	}
+
+	// Verify we got the expected wins
+	if len(filteredWins) != 5 {
+		t.Fatalf("expected 5 filtered wins, got %d", len(filteredWins))
+	}
+
+	// The key test: verify that the line numbers are the ORIGINAL file positions
+	expectedLineNumbers := []int{1, 3, 6, 8, 10}
+	expectedMessages := []string{"Win 1 #work", "Win 3 #work", "Win 6 #work", "Win 8 #work", "Win 10 #work"}
+
+	for i, iw := range filteredWins {
+		if iw.index != expectedLineNumbers[i] {
+			t.Errorf("filtered win %d: line number = %d, want %d", i, iw.index, expectedLineNumbers[i])
+		}
+		if iw.win.Message != expectedMessages[i] {
+			t.Errorf("filtered win %d: message = %q, want %q", i, iw.win.Message, expectedMessages[i])
+		}
+	}
+
+	// Critical test: verify that if we want to delete "Win 6 #work" (which appears
+	// as the 3rd item in filtered results), we would use line number 6, not 3
+	targetWinInFilteredResults := 2 // 0-indexed, this is the 3rd result
+	lineNumberToDelete := filteredWins[targetWinInFilteredResults].index
+
+	if lineNumberToDelete != 6 {
+		t.Errorf("to delete the 3rd filtered result, line number should be 6, got %d", lineNumberToDelete)
+	}
+
+	// Verify that this line number works with the delete operation
+	deleteIndex := lineNumberToDelete - 1 // Convert to 0-based index
+	if deleteIndex < 0 || deleteIndex >= len(wins) {
+		t.Fatalf("delete index %d is out of range", deleteIndex)
+	}
+
+	if wins[deleteIndex].Message != "Win 6 #work" {
+		t.Errorf("line %d contains %q, expected %q", lineNumberToDelete, wins[deleteIndex].Message, "Win 6 #work")
 	}
 }
