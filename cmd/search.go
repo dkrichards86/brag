@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/dkrichards86/brag/internal/models"
@@ -14,24 +13,22 @@ var searchCmd = &cobra.Command{
 	Short: "Search for wins containing a keyword",
 	Long:  `Search through your wins for entries containing the specified keyword or phrase.`,
 	Args:  cobra.MinimumNArgs(1),
-	Run:   searchWins,
+	RunE:  searchWins,
 }
 
 func init() {
 	rootCmd.AddCommand(searchCmd)
 }
 
-func searchWins(cmd *cobra.Command, args []string) {
+func searchWins(cmd *cobra.Command, args []string) error {
 	store, err := getStorage()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to initialize storage: %w", err)
 	}
 
 	wins, err := store.ReadAllWins()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading wins: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to read wins: %w", err)
 	}
 
 	// Join all args as search query
@@ -54,11 +51,12 @@ func searchWins(cmd *cobra.Command, args []string) {
 
 	if len(matches) == 0 {
 		fmt.Printf("No wins found containing '%s'\n", query)
-		return
+		return nil
 	}
 
 	fmt.Printf("Found %d wins containing '%s':\n\n", len(matches), query)
 	for _, match := range matches {
 		fmt.Printf("%d. %s\n", match.index+1, match.win.Format())
 	}
+	return nil
 }

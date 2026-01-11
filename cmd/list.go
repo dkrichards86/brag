@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/dkrichards86/brag/internal/models"
+	"github.com/dkrichards86/brag/internal/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -21,7 +21,7 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List micro-wins with line numbers",
 	Long:  `Display your micro-wins with line numbers for editing/deleting. Defaults to last 7 days.`,
-	Run:   listWins,
+	RunE:  listWins,
 }
 
 func init() {
@@ -34,17 +34,15 @@ func init() {
 	listCmd.Flags().BoolVar(&listUntaggedOnly, "untagged", false, "Show only wins without tags")
 }
 
-func listWins(cmd *cobra.Command, args []string) {
+func listWins(cmd *cobra.Command, args []string) error {
 	store, err := getStorage()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to initialize storage: %w", err)
 	}
 
 	wins, err := store.ReadAllWins()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading wins: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to read wins: %w", err)
 	}
 
 	// Parse date range (defaults to last 7 days)
@@ -83,7 +81,7 @@ func listWins(cmd *cobra.Command, args []string) {
 
 	if len(filteredWins) == 0 {
 		fmt.Println("No wins found for the specified criteria.")
-		return
+		return nil
 	}
 
 	// Display wins with their actual file line numbers
@@ -93,6 +91,7 @@ func listWins(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Printf("\nTotal: %d wins\n", len(filteredWins))
+	return nil
 }
 
 func parseListDateRange(fromStr, toStr string) (time.Time, time.Time) {
@@ -100,30 +99,17 @@ func parseListDateRange(fromStr, toStr string) (time.Time, time.Time) {
 	to := time.Now()
 	from := to.AddDate(0, 0, -7)
 
-	dateFormats := []string{
-		"2006/01/02",
-		"2006-01-02",
-		"01/02/2006",
-		"01-02-2006",
-	}
-
 	// Parse from date
 	if fromStr != "" {
-		for _, format := range dateFormats {
-			if t, err := time.Parse(format, fromStr); err == nil {
-				from = t
-				break
-			}
+		if t, ok := utils.ParseDate(fromStr); ok {
+			from = t
 		}
 	}
 
 	// Parse to date
 	if toStr != "" {
-		for _, format := range dateFormats {
-			if t, err := time.Parse(format, toStr); err == nil {
-				to = t
-				break
-			}
+		if t, ok := utils.ParseDate(toStr); ok {
+			to = t
 		}
 	}
 
