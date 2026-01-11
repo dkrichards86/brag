@@ -19,8 +19,9 @@ This file provides context for AI assistants (like Claude) working on the brag p
 ```
 brag/
 ├── .github/
-│   └── workflows/
-│       └── ci.yml              # GitHub Actions CI pipeline
+│   ├── workflows/
+│   │   └── ci.yml              # GitHub Actions CI pipeline
+│   └── PULL_REQUEST_TEMPLATE.md # PR template
 ├── cmd/                        # Command implementations
 │   ├── root.go                # Root command & default add functionality
 │   ├── review.go              # Review/filter wins
@@ -213,6 +214,29 @@ Future enhancements that would fit the design:
 5. **Shell Completions**: Better autocompletion for tags
 6. **Undo**: Undo last add operation
 
+## Pull Request Process
+
+### Creating Pull Requests
+
+When creating a pull request, the PR template ([.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md)) will be automatically populated by GitHub. Fill it out completely:
+
+**Required before creating PR**:
+1. Run `make ci` locally - all tests and linting must pass
+2. Test manually with `--brag-dir=".brag-test"` to avoid polluting real data
+3. Update documentation if you added/changed commands or flags
+
+**PR Template Structure**:
+- **Summary**: Brief description of what the PR does
+- **Changes**: Bulleted list of specific changes made
+- **Testing**: Checklist confirming tests pass, linter passes, and manual testing done
+- **Notes**: Any important context, breaking changes, or migration notes
+
+**For AI Assistants creating PRs**:
+- When using `gh pr create`, the template will auto-populate
+- Fill in all sections with specific, concrete information
+- Don't leave placeholder text - provide actual details
+- Ensure the "Testing" checklist items are genuinely completed before checking them
+
 ## Important Notes for AI Assistants
 
 ### When Making Changes
@@ -226,6 +250,7 @@ Future enhancements that would fit the design:
 7. **Run CI Locally**: Use `make ci` before pushing changes
 8. **Check Linter**: All code must pass `make lint` with zero issues
 9. **Update Documentation**: When adding/modifying commands, ALWAYS update [README.md](README.md) with usage examples and explanations
+10. **Use PR Template**: When creating PRs, ensure all sections of the template are filled out completely
 
 ### Code Style
 
