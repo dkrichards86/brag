@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"sort"
 
 	"github.com/spf13/cobra"
@@ -12,24 +11,22 @@ var tagsCmd = &cobra.Command{
 	Use:   "tags",
 	Short: "List all tags and their frequency",
 	Long:  `List all tags found in your wins, sorted by frequency.`,
-	Run:   listTags,
+	RunE:  listTags,
 }
 
 func init() {
 	rootCmd.AddCommand(tagsCmd)
 }
 
-func listTags(cmd *cobra.Command, args []string) {
+func listTags(cmd *cobra.Command, args []string) error {
 	store, err := getStorage()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to initialize storage: %w", err)
 	}
 
 	wins, err := store.ReadAllWins()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading wins: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to read wins: %w", err)
 	}
 
 	// Count tag frequencies
@@ -42,7 +39,7 @@ func listTags(cmd *cobra.Command, args []string) {
 
 	if len(tagCounts) == 0 {
 		fmt.Println("No tags found in your wins.")
-		return
+		return nil
 	}
 
 	// Convert to slice for sorting
@@ -68,4 +65,5 @@ func listTags(cmd *cobra.Command, args []string) {
 	for _, t := range tags {
 		fmt.Printf("%-20s %d\n", t.tag, t.count)
 	}
+	return nil
 }

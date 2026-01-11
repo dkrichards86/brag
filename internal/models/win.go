@@ -7,6 +7,9 @@ import (
 	"time"
 )
 
+// tagRegex is pre-compiled regex for extracting hashtags
+var tagRegex = regexp.MustCompile(`#\w+`)
+
 // Win represents a single micro-win entry
 type Win struct {
 	Timestamp time.Time
@@ -45,6 +48,12 @@ func (w *Win) Format() string {
 	return fmt.Sprintf("%s | %s", w.Timestamp.Format("2006-01-02 15:04"), w.Message)
 }
 
+// UpdateMessage updates the message and recalculates tags
+func (w *Win) UpdateMessage(message string) {
+	w.Message = message
+	w.Tags = extractTags(message)
+}
+
 // HasTag checks if the win has a specific tag
 func (w *Win) HasTag(tag string) bool {
 	tag = strings.ToLower(tag)
@@ -61,6 +70,5 @@ func (w *Win) HasTag(tag string) bool {
 
 // extractTags extracts all hashtags from a message
 func extractTags(message string) []string {
-	re := regexp.MustCompile(`#\w+`)
-	return re.FindAllString(message, -1)
+	return tagRegex.FindAllString(message, -1)
 }

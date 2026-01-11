@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/dkrichards86/brag/internal/models"
@@ -18,6 +19,16 @@ const (
 	envBragDir  = "BRAG_DIR"
 	envWinsFile = "BRAG_FILE"
 )
+
+// sanitizeMessage removes characters that would break the file format
+func sanitizeMessage(msg string) string {
+	// Replace pipe characters with similar-looking Unicode character
+	msg = strings.ReplaceAll(msg, "|", "│")
+	// Remove newlines and carriage returns
+	msg = strings.ReplaceAll(msg, "\n", " ")
+	msg = strings.ReplaceAll(msg, "\r", " ")
+	return msg
+}
 
 // Storage handles file operations for wins
 type Storage struct {
@@ -82,6 +93,9 @@ func (s *Storage) GetFilePath() string {
 
 // AddWin appends a new win to the file
 func (s *Storage) AddWin(message string, timestamp time.Time) error {
+	// Sanitize message to prevent format corruption
+	message = sanitizeMessage(message)
+
 	win := &models.Win{
 		Timestamp: timestamp,
 		Message:   message,
@@ -96,6 +110,11 @@ func (s *Storage) AddWin(message string, timestamp time.Time) error {
 	_, err = f.WriteString(win.Format() + "\n")
 	if err != nil {
 		return fmt.Errorf("failed to write win: %w", err)
+	}
+
+	// Ensure data is persisted to disk
+	if err := f.Sync(); err != nil {
+		return fmt.Errorf("failed to sync win: %w", err)
 	}
 
 	return nil
@@ -138,18 +157,38 @@ func (s *Storage) ReadAllWins() ([]*models.Win, error) {
 }
 
 // WriteWins writes all wins back to the file (for edit/delete operations)
+// Uses atomic write pattern (write to temp file, then rename) to prevent corruption
 func (s *Storage) WriteWins(wins []*models.Win) error {
-	f, err := os.OpenFile(s.filePath, os.O_WRONLY|os.O_TRUNC, 0644)
+	// Write to temporary file first
+	tmpFile := s.filePath + ".tmp"
+	f, err := os.Create(tmpFile)
 	if err != nil {
-		return fmt.Errorf("failed to open wins file: %w", err)
+		return fmt.Errorf("failed to create temp file: %w", err)
 	}
-	defer f.Close()
+	defer os.Remove(tmpFile) // Clean up temp file on failure
 
+	// Write all wins to temp file
 	for _, win := range wins {
 		_, err = f.WriteString(win.Format() + "\n")
 		if err != nil {
+			f.Close()
 			return fmt.Errorf("failed to write win: %w", err)
 		}
+	}
+
+	// Ensure data is flushed to disk before rename
+	if err := f.Sync(); err != nil {
+		f.Close()
+		return fmt.Errorf("failed to sync: %w", err)
+	}
+
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("failed to close temp file: %w", err)
+	}
+
+	// Atomic rename - POSIX guarantees atomicity
+	if err := os.Rename(tmpFile, s.filePath); err != nil {
+		return fmt.Errorf("failed to rename temp file: %w", err)
 	}
 
 	return nil
@@ -183,8 +222,11 @@ func (s *Storage) UpdateWin(index int, message string) error {
 		return fmt.Errorf("invalid index: %d", index)
 	}
 
-	// Update the message, keep the original timestamp
-	wins[index].Message = message
+	// Sanitize message to prevent format corruption
+	message = sanitizeMessage(message)
+
+	// Update the message and recalculate tags, keep the original timestamp
+	wins[index].UpdateMessage(message)
 
 	return s.WriteWins(wins)
 }

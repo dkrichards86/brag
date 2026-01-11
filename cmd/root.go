@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dkrichards86/brag/internal/storage"
+	"github.com/dkrichards86/brag/internal/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -99,6 +100,12 @@ func addWin(cmd *cobra.Command, args []string) {
 	// Parse arguments to extract message and optional date
 	message, timestamp := parseAddArgs(args)
 
+	// Validate that message is not empty
+	if message == "" {
+		fmt.Fprintln(os.Stderr, "Error: message cannot be empty")
+		os.Exit(1)
+	}
+
 	if err := store.AddWin(message, timestamp); err != nil {
 		fmt.Fprintf(os.Stderr, "Error adding win: %v\n", err)
 		os.Exit(1)
@@ -114,24 +121,14 @@ func parseAddArgs(args []string) (string, time.Time) {
 	lastArg := args[len(args)-1]
 	timestamp := time.Now()
 
-	// Try to parse various date formats
-	dateFormats := []string{
-		"2006/01/02",
-		"2006-01-02",
-		"01/02/2006",
-		"01-02-2006",
+	// Try to parse the last argument as a date
+	if t, ok := utils.ParseDate(lastArg); ok {
+		// Valid date found, use it and exclude from message
+		timestamp = t
+		args = args[:len(args)-1]
 	}
 
-	for _, format := range dateFormats {
-		if t, err := time.Parse(format, lastArg); err == nil {
-			// Valid date found, use it and exclude from message
-			timestamp = t
-			args = args[:len(args)-1]
-			break
-		}
-	}
-
-	// Join remaining args as the message
-	message := strings.Join(args, " ")
+	// Join remaining args as the message and trim whitespace
+	message := strings.TrimSpace(strings.Join(args, " "))
 	return message, timestamp
 }
