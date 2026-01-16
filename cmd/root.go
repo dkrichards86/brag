@@ -132,3 +132,44 @@ func parseAddArgs(args []string) (string, time.Time) {
 	message := strings.TrimSpace(strings.Join(args, " "))
 	return message, timestamp
 }
+
+// parseLineNumber converts a line number string to an index
+// Supports special keywords like "last", "latest"
+// Returns the 0-based index and an error if invalid
+func parseLineNumber(lineNumStr string, store *storage.Storage) (int, error) {
+	// Handle special keywords
+	lineNumStr = strings.ToLower(strings.TrimSpace(lineNumStr))
+	if lineNumStr == "last" || lineNumStr == "latest" {
+		wins, err := store.ReadAllWins()
+		if err != nil {
+			return 0, fmt.Errorf("failed to read wins: %w", err)
+		}
+		if len(wins) == 0 {
+			return 0, fmt.Errorf("no wins found (use 'brag \"your message\"' to add your first win)")
+		}
+		return len(wins) - 1, nil
+	}
+
+	// Parse as regular number
+	var num int
+	n, err := fmt.Sscanf(lineNumStr, "%d", &num)
+	if err != nil || n != 1 {
+		return 0, fmt.Errorf("invalid line number '%s' (use 'brag list' to see valid line numbers)", lineNumStr)
+	}
+
+	// Validate range
+	wins, err := store.ReadAllWins()
+	if err != nil {
+		return 0, fmt.Errorf("failed to read wins: %w", err)
+	}
+
+	index := num - 1
+	if index < 0 || index >= len(wins) {
+		if len(wins) == 0 {
+			return 0, fmt.Errorf("no wins found (use 'brag \"your message\"' to add your first win)")
+		}
+		return 0, fmt.Errorf("line number %d is out of range (valid range: 1-%d)\nUse 'brag list' to see all wins with line numbers", num, len(wins))
+	}
+
+	return index, nil
+}
