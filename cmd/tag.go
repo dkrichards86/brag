@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -58,14 +57,29 @@ func addTag(cmd *cobra.Command, args []string) {
 
 	win := wins[index]
 
-	// Check if the tag already exists
-	if win.HasTag(tag) {
-		fmt.Printf("Tag %s already exists on this win.\n", tag)
+	// Check which tags are new and which already exist
+	var newTags []string
+	var existingTags []string
+	for _, tag := range tags {
+		if win.HasTag(tag) {
+			existingTags = append(existingTags, tag)
+		} else {
+			newTags = append(newTags, tag)
+		}
+	}
+
+	// If all tags already exist, nothing to do
+	if len(newTags) == 0 {
+		if len(existingTags) == 1 {
+			fmt.Printf("Tag %s already exists on this win.\n", existingTags[0])
+		} else {
+			fmt.Printf("Tags %s already exist on this win.\n", strings.Join(existingTags, ", "))
+		}
 		return
 	}
 
-	// Add the tag to the message
-	newMessage := win.Message + " " + tag
+	// Add the new tags to the message
+	newMessage := win.Message + " " + strings.Join(newTags, " ")
 
 	// Update the win
 	if err := store.UpdateWin(index, newMessage); err != nil {
@@ -73,5 +87,18 @@ func addTag(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Added tag %s to win #%d\n", tag, lineNum)
+	// Report results
+	if len(newTags) == 1 {
+		fmt.Printf("Added tag %s to win #%d\n", newTags[0], index+1)
+	} else {
+		fmt.Printf("Added tags %s to win #%d\n", strings.Join(newTags, ", "), index+1)
+	}
+
+	if len(existingTags) > 0 {
+		if len(existingTags) == 1 {
+			fmt.Printf("(Tag %s was already present)\n", existingTags[0])
+		} else {
+			fmt.Printf("(Tags %s were already present)\n", strings.Join(existingTags, ", "))
+		}
+	}
 }
