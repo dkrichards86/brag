@@ -224,8 +224,8 @@ func TestEditWinPreservesTimestamp(t *testing.T) {
 		t.Fatalf("Failed to create storage: %v", err)
 	}
 
-	// Note: File format only stores minute precision, so use a timestamp without seconds
-	originalTimestamp := time.Date(2026, 1, 5, 14, 30, 0, 0, time.UTC)
+	// Note: File format only stores date, not time
+	originalTimestamp := time.Date(2026, 1, 5, 0, 0, 0, 0, time.UTC)
 
 	testWins := []*models.Win{
 		{
@@ -255,7 +255,8 @@ func TestEditWinPreservesTimestamp(t *testing.T) {
 		t.Fatalf("Expected 1 win, got %d", len(wins))
 	}
 
-	if !wins[0].Timestamp.Equal(originalTimestamp) {
+	// Compare date portion only since time is not stored
+	if !wins[0].Timestamp.Truncate(24 * time.Hour).Equal(originalTimestamp.Truncate(24 * time.Hour)) {
 		t.Errorf("timestamp = %v, want %v (timestamp should be preserved)", wins[0].Timestamp, originalTimestamp)
 	}
 
