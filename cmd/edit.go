@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
+)
+
+var (
+	editMessage string
 )
 
 var editCmd = &cobra.Command{
@@ -20,6 +23,7 @@ var editCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(editCmd)
+	editCmd.Flags().StringVarP(&editMessage, "message", "m", "", "New message for the win (skips interactive prompt)")
 }
 
 func editWin(cmd *cobra.Command, args []string) {
@@ -51,16 +55,23 @@ func editWin(cmd *cobra.Command, args []string) {
 	// Show current entry
 	fmt.Printf("Current entry:\n%s\n\n", wins[index].Format())
 
-	// Prompt for new message
-	fmt.Print("Enter new message (or press Ctrl+C to cancel): ")
-	reader := bufio.NewReader(os.Stdin)
-	newMessage, err := reader.ReadString('\n')
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading input: %v\n", err)
-		os.Exit(1)
+	var newMessage string
+
+	// If --message flag is provided, use it directly
+	if editMessage != "" {
+		newMessage = strings.TrimSpace(editMessage)
+	} else {
+		// Prompt for new message
+		fmt.Print("Enter new message (or press Ctrl+C to cancel): ")
+		reader := bufio.NewReader(os.Stdin)
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading input: %v\n", err)
+			os.Exit(1)
+		}
+		newMessage = strings.TrimSpace(input)
 	}
 
-	newMessage = strings.TrimSpace(newMessage)
 	if newMessage == "" {
 		fmt.Println("No changes made.")
 		return
