@@ -4,10 +4,13 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
+)
+
+var (
+	deleteForce bool
 )
 
 var deleteCmd = &cobra.Command{
@@ -20,6 +23,7 @@ var deleteCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(deleteCmd)
+	deleteCmd.Flags().BoolVarP(&deleteForce, "force", "y", false, "Skip confirmation prompt")
 }
 
 func deleteWin(cmd *cobra.Command, args []string) error {
@@ -42,18 +46,20 @@ func deleteWin(cmd *cobra.Command, args []string) error {
 	// Show the entry to be deleted
 	fmt.Printf("About to delete:\n%s\n\n", wins[index].Format())
 
-	// Confirm deletion
-	fmt.Print("Are you sure? (y/N): ")
-	reader := bufio.NewReader(os.Stdin)
-	response, err := reader.ReadString('\n')
-	if err != nil {
-		return fmt.Errorf("failed to read input: %w", err)
-	}
+	// Confirm deletion unless --force/-y is set
+	if !deleteForce {
+		fmt.Print("Are you sure? (y/N): ")
+		reader := bufio.NewReader(os.Stdin)
+		response, err := reader.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("failed to read input: %w", err)
+		}
 
-	response = strings.TrimSpace(strings.ToLower(response))
-	if response != "y" && response != "yes" {
-		fmt.Println("Deletion canceled.")
-		return nil
+		response = strings.TrimSpace(strings.ToLower(response))
+		if response != "y" && response != "yes" {
+			fmt.Println("Deletion canceled.")
+			return nil
+		}
 	}
 
 	// Delete the win
