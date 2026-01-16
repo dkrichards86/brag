@@ -11,9 +11,9 @@ import (
 )
 
 var deleteCmd = &cobra.Command{
-	Use:   "delete <line-number>",
+	Use:   "delete <line-number|last>",
 	Short: "Delete a specific win",
-	Long:  `Delete a win by its line number (use 'brag list' to see line numbers).`,
+	Long:  `Delete a win by its line number (use 'brag list' to see line numbers). Use 'last' or 'latest' to delete the most recent win.`,
 	Args:  cobra.ExactArgs(1),
 	RunE:  deleteWin,
 }
@@ -28,22 +28,15 @@ func deleteWin(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to initialize storage: %w", err)
 	}
 
-	// Parse line number
-	lineNum, err := strconv.Atoi(args[0])
+	// Parse line number (supports "last" keyword)
+	index, err := parseLineNumber(args[0], store)
 	if err != nil {
-		return fmt.Errorf("invalid line number '%s'", args[0])
+		return err
 	}
-
-	// Convert to 0-based index
-	index := lineNum - 1
 
 	wins, err := store.ReadAllWins()
 	if err != nil {
 		return fmt.Errorf("failed to read wins: %w", err)
-	}
-
-	if index < 0 || index >= len(wins) {
-		return fmt.Errorf("line number %d is out of range (1-%d)", lineNum, len(wins))
 	}
 
 	// Show the entry to be deleted

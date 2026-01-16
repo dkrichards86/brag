@@ -10,10 +10,10 @@ import (
 )
 
 var tagCmd = &cobra.Command{
-	Use:   "tag <line-number> <tag>",
-	Short: "Add a tag to an existing win",
-	Long:  `Add a tag to an existing win by line number. The tag will be appended to the message.`,
-	Args:  cobra.ExactArgs(2),
+	Use:   "tag <line-number|last> <tag> [tags...]",
+	Short: "Add one or more tags to an existing win",
+	Long:  `Add one or more tags to an existing win by line number. Use 'last' or 'latest' to tag the most recent win. The tags will be appended to the message.`,
+	Args:  cobra.MinimumNArgs(2),
 	Run:   addTag,
 }
 
@@ -28,20 +28,21 @@ func addTag(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	// Parse line number
-	lineNum, err := strconv.Atoi(args[0])
+	// Parse line number (supports "last" keyword)
+	index, err := parseLineNumber(args[0], store)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: invalid line number '%s'\n", args[0])
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Convert to 0-based index
-	index := lineNum - 1
-
-	// Get the tag and ensure it starts with #
-	tag := strings.TrimSpace(args[1])
-	if !strings.HasPrefix(tag, "#") {
-		tag = "#" + tag
+	// Process all tags and ensure they start with #
+	var tags []string
+	for _, arg := range args[1:] {
+		tag := strings.TrimSpace(arg)
+		if !strings.HasPrefix(tag, "#") {
+			tag = "#" + tag
+		}
+		tags = append(tags, tag)
 	}
 
 	wins, err := store.ReadAllWins()
@@ -51,7 +52,7 @@ func addTag(cmd *cobra.Command, args []string) {
 	}
 
 	if index < 0 || index >= len(wins) {
-		fmt.Fprintf(os.Stderr, "Error: line number %d is out of range (1-%d)\n", lineNum, len(wins))
+		fmt.Fprintf(os.Stderr, "Error: line number is out of range (1-%d)\n", len(wins))
 		os.Exit(1)
 	}
 

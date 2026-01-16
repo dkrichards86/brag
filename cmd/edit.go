@@ -12,9 +12,9 @@ import (
 )
 
 var editCmd = &cobra.Command{
-	Use:   "edit [line-number]",
+	Use:   "edit [line-number|last]",
 	Short: "Edit wins",
-	Long:  `Edit the entire wins file or a specific entry by line number.`,
+	Long:  `Edit the entire wins file or a specific entry by line number. Use 'last' or 'latest' to edit the most recent win.`,
 	Run:   editWin,
 }
 
@@ -35,24 +35,16 @@ func editWin(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// Parse line number
-	lineNum, err := strconv.Atoi(args[0])
+	// Parse line number (supports "last" keyword)
+	index, err := parseLineNumber(args[0], store)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: invalid line number '%s'\n", args[0])
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-
-	// Convert to 0-based index
-	index := lineNum - 1
 
 	wins, err := store.ReadAllWins()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading wins: %v\n", err)
-		os.Exit(1)
-	}
-
-	if index < 0 || index >= len(wins) {
-		fmt.Fprintf(os.Stderr, "Error: line number %d is out of range (1-%d)\n", lineNum, len(wins))
 		os.Exit(1)
 	}
 
