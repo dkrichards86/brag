@@ -15,7 +15,12 @@ By logging micro-wins as they happen, you'll have a rich history to draw from du
 - List wins by date range with line numbers
 - Filter by tags (including macro wins)
 - Edit and delete specific entries
-- Search through your wins
+- Search through your wins with date and tag filters
+- Add/remove multiple tags at once
+- Work with most recent win using `last` keyword
+- Inline editing with `--message` flag
+- Force delete without confirmation with `-y` flag
+- Smart error messages with helpful suggestions
 - Simple plain text storage
 
 ## Installation
@@ -107,6 +112,14 @@ List wins from the last 7 days (default) with line numbers:
 brag list
 ```
 
+List all wins (no date filter):
+
+```bash
+brag list --all
+# or
+brag list -a
+```
+
 List wins within a specific date range:
 
 ```bash
@@ -147,10 +160,26 @@ Open the entire wins file in your `$EDITOR`:
 brag edit
 ```
 
-Edit a specific win by line number:
+Edit a specific win by line number (interactive):
 
 ```bash
 brag edit 3
+```
+
+Edit a win with inline message (skips interactive prompt):
+
+```bash
+brag edit 3 --message "Updated win text with #newtag"
+# or
+brag edit 3 -m "Updated win text"
+```
+
+Edit the most recent win:
+
+```bash
+brag edit last
+# or with inline message
+brag edit last -m "Fixed the last win"
 ```
 
 ### Deleting Wins
@@ -161,8 +190,22 @@ Delete a win by line number (with confirmation):
 brag delete 2
 ```
 
+Delete without confirmation prompt:
+
+```bash
+brag delete 2 --force
+# or
+brag delete 2 -y
+```
+
+Delete the most recent win:
+
+```bash
+brag delete last
+```
+
 **Important**: Line numbers reflect the current state of the file. After deleting a win, subsequent line numbers shift down. For example, if you delete line 1, what was line 2 becomes the new line 1. To delete multiple wins, either:
-- Delete from highest to lowest: `brag delete 3 && brag delete 2 && brag delete 1`
+- Delete from highest to lowest: `brag delete 3 -y && brag delete 2 -y && brag delete 1 -y`
 - Or re-run `brag list` between deletions to see updated line numbers
 
 ### Searching Wins
@@ -179,6 +222,24 @@ Search for multiple words:
 brag search "fixed bug"
 ```
 
+Search with date range filters:
+
+```bash
+brag search "bug" --from 2026/01/01 --to 2026/01/15
+```
+
+Search within a specific tag:
+
+```bash
+brag search "performance" --tag backend
+```
+
+Combine multiple filters:
+
+```bash
+brag search "optimization" --from 2026/01/01 --tag work
+```
+
 ### Managing Tags
 
 List all tags and their frequency (sorted by most used):
@@ -193,10 +254,41 @@ Add a tag to an existing win by line number:
 brag tag 5 work
 ```
 
+Add multiple tags at once:
+
+```bash
+brag tag 5 work backend urgent
+```
+
+Add tags to the most recent win:
+
+```bash
+brag tag last frontend
+```
+
+Remove a tag from a win:
+
+```bash
+brag untag 5 work
+```
+
+Remove multiple tags at once:
+
+```bash
+brag untag 5 urgent testing
+```
+
+Remove tags from the most recent win:
+
+```bash
+brag untag last backend
+```
+
 You can include or omit the `#` prefix:
 
 ```bash
 brag tag 5 #backend
+brag untag 5 #backend
 ```
 
 The tag command will prevent duplicate tags and notify you if the tag already exists on that win.
@@ -272,6 +364,31 @@ Or list by specific tag:
 brag list --tag leadership
 ```
 
+## Quick Reference: Working with the Most Recent Win
+
+Many commands support the `last` or `latest` keyword to quickly operate on your most recent win:
+
+```bash
+# Tag the last win you added
+brag tag last work urgent
+
+# Edit the last win
+brag edit last -m "Updated message"
+
+# Remove tags from the last win
+brag untag last testing
+
+# Delete the last win
+brag delete last -y
+```
+
+This is especially useful when you realize you forgot to tag a win right after adding it:
+
+```bash
+brag "Fixed authentication bug"
+brag tag last work backend  # Oops, forgot the tags!
+```
+
 ## Tips
 
 1. **Make it a habit**: Add wins throughout the day as you accomplish things
@@ -280,6 +397,8 @@ brag list --tag leadership
 4. **List regularly**: Look back at your wins weekly or monthly to stay motivated with `brag list`
 5. **Tag important wins**: Tag significant achievements so you can filter them later with `--tagged` for year-end reporting
 6. **Use quotes for hashtags**: Remember to quote your message when including tags: `brag "message #tag"`
+7. **Use the 'last' keyword**: Quickly edit, tag, or delete your most recent win with `brag edit last`, `brag tag last`, etc.
+8. **Skip confirmations when needed**: Use `-y` or `--force` with delete to skip confirmation prompts when you're sure
 
 ## License
 
