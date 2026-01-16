@@ -237,19 +237,19 @@ func TestAddWinIntegration(t *testing.T) {
 		{
 			name:        "simple message",
 			message:     "Fixed a bug",
-			timestamp:   time.Date(2026, 1, 8, 14, 30, 0, 0, time.UTC),
+			timestamp:   time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC),
 			expectError: false,
 		},
 		{
 			name:        "message with tag",
 			message:     "Completed feature #work",
-			timestamp:   time.Date(2026, 1, 8, 15, 0, 0, 0, time.UTC),
+			timestamp:   time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC),
 			expectError: false,
 		},
 		{
 			name:        "message with multiple tags",
 			message:     "Code review #work #backend #urgent",
-			timestamp:   time.Date(2026, 1, 8, 16, 30, 0, 0, time.UTC),
+			timestamp:   time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC),
 			expectError: false,
 		},
 	}
@@ -277,7 +277,8 @@ func TestAddWinIntegration(t *testing.T) {
 				for _, win := range wins {
 					if win.Message == tt.message {
 						found = true
-						if !win.Timestamp.Equal(tt.timestamp) {
+						// Compare date portion only since time is not stored
+						if !win.Timestamp.Truncate(24 * time.Hour).Equal(tt.timestamp.Truncate(24 * time.Hour)) {
 							t.Errorf("timestamp = %v, want %v", win.Timestamp, tt.timestamp)
 						}
 						break

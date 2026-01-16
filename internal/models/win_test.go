@@ -14,9 +14,9 @@ func TestParseWin(t *testing.T) {
 	}{
 		{
 			name: "valid win with tags",
-			line: "2026-01-08 14:32 | Fixed bug #work #backend",
+			line: "2026-01-08 | Fixed bug #work #backend",
 			want: &Win{
-				Timestamp: time.Date(2026, 1, 8, 14, 32, 0, 0, time.UTC),
+				Timestamp: time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC),
 				Message:   "Fixed bug #work #backend",
 				Tags:      []string{"#work", "#backend"},
 			},
@@ -24,9 +24,9 @@ func TestParseWin(t *testing.T) {
 		},
 		{
 			name: "valid win without tags",
-			line: "2026-01-08 10:00 | Completed project milestone",
+			line: "2026-01-08 | Completed project milestone",
 			want: &Win{
-				Timestamp: time.Date(2026, 1, 8, 10, 0, 0, 0, time.UTC),
+				Timestamp: time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC),
 				Message:   "Completed project milestone",
 				Tags:      []string{},
 			},
@@ -34,9 +34,9 @@ func TestParseWin(t *testing.T) {
 		},
 		{
 			name: "valid win with single tag",
-			line: "2026-01-08 09:15 | Morning standup #meeting",
+			line: "2026-01-08 | Morning standup #meeting",
 			want: &Win{
-				Timestamp: time.Date(2026, 1, 8, 9, 15, 0, 0, time.UTC),
+				Timestamp: time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC),
 				Message:   "Morning standup #meeting",
 				Tags:      []string{"#meeting"},
 			},
@@ -44,7 +44,7 @@ func TestParseWin(t *testing.T) {
 		},
 		{
 			name:    "invalid format - missing separator",
-			line:    "2026-01-08 14:32 No separator here",
+			line:    "2026-01-08 No separator here",
 			want:    nil,
 			wantErr: true,
 		},
@@ -62,9 +62,9 @@ func TestParseWin(t *testing.T) {
 		},
 		{
 			name: "valid win with extra whitespace",
-			line: "  2026-01-08 14:32  |  Message with spaces  ",
+			line: "  2026-01-08  |  Message with spaces  ",
 			want: &Win{
-				Timestamp: time.Date(2026, 1, 8, 14, 32, 0, 0, time.UTC),
+				Timestamp: time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC),
 				Message:   "Message with spaces",
 				Tags:      []string{},
 			},
@@ -72,9 +72,9 @@ func TestParseWin(t *testing.T) {
 		},
 		{
 			name: "valid win with multiple tags in middle",
-			line: "2026-01-08 11:00 | Reviewed #code and #documentation today",
+			line: "2026-01-08 | Reviewed #code and #documentation today",
 			want: &Win{
-				Timestamp: time.Date(2026, 1, 8, 11, 0, 0, 0, time.UTC),
+				Timestamp: time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC),
 				Message:   "Reviewed #code and #documentation today",
 				Tags:      []string{"#code", "#documentation"},
 			},
@@ -121,29 +121,29 @@ func TestWin_Format(t *testing.T) {
 		{
 			name: "win with tags",
 			win: &Win{
-				Timestamp: time.Date(2026, 1, 8, 14, 32, 0, 0, time.UTC),
+				Timestamp: time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC),
 				Message:   "Fixed bug #work #backend",
 				Tags:      []string{"#work", "#backend"},
 			},
-			want: "2026-01-08 14:32 | Fixed bug #work #backend",
+			want: "2026-01-08 | Fixed bug #work #backend",
 		},
 		{
 			name: "win without tags",
 			win: &Win{
-				Timestamp: time.Date(2026, 1, 8, 10, 0, 0, 0, time.UTC),
+				Timestamp: time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC),
 				Message:   "Completed milestone",
 				Tags:      []string{},
 			},
-			want: "2026-01-08 10:00 | Completed milestone",
+			want: "2026-01-08 | Completed milestone",
 		},
 		{
-			name: "win with single digit hour",
+			name: "win with any time",
 			win: &Win{
 				Timestamp: time.Date(2026, 1, 8, 9, 5, 0, 0, time.UTC),
 				Message:   "Early win",
 				Tags:      []string{},
 			},
-			want: "2026-01-08 09:05 | Early win",
+			want: "2026-01-08 | Early win",
 		},
 	}
 
@@ -281,7 +281,7 @@ func TestExtractTags(t *testing.T) {
 // TestParseWinRoundTrip tests that Format() output can be parsed back
 func TestParseWinRoundTrip(t *testing.T) {
 	original := &Win{
-		Timestamp: time.Date(2026, 1, 8, 14, 32, 0, 0, time.UTC),
+		Timestamp: time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC),
 		Message:   "Fixed bug #work #backend",
 		Tags:      []string{"#work", "#backend"},
 	}
@@ -292,7 +292,8 @@ func TestParseWinRoundTrip(t *testing.T) {
 		t.Fatalf("ParseWin() failed on formatted output: %v", err)
 	}
 
-	if !parsed.Timestamp.Equal(original.Timestamp) {
+	// Compare just the date portion since we no longer store time
+	if !parsed.Timestamp.Truncate(24 * time.Hour).Equal(original.Timestamp.Truncate(24 * time.Hour)) {
 		t.Errorf("Round trip Timestamp = %v, want %v", parsed.Timestamp, original.Timestamp)
 	}
 	if parsed.Message != original.Message {

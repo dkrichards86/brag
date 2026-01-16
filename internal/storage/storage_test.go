@@ -48,7 +48,7 @@ func TestNew(t *testing.T) {
 func TestAddWin(t *testing.T) {
 	storage := setupTestStorage(t)
 
-	timestamp := time.Date(2026, 1, 8, 14, 32, 0, 0, time.UTC)
+	timestamp := time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC)
 	message := "Test win #test"
 
 	err := storage.AddWin(message, timestamp)
@@ -62,7 +62,7 @@ func TestAddWin(t *testing.T) {
 		t.Fatalf("Failed to read file: %v", err)
 	}
 
-	expected := "2026-01-08 14:32 | Test win #test\n"
+	expected := "2026-01-08 | Test win #test\n"
 	if string(content) != expected {
 		t.Errorf("File content = %q, want %q", string(content), expected)
 	}
@@ -75,9 +75,9 @@ func TestAddMultipleWins(t *testing.T) {
 		message   string
 		timestamp time.Time
 	}{
-		{"First win #work", time.Date(2026, 1, 8, 10, 0, 0, 0, time.UTC)},
-		{"Second win #personal", time.Date(2026, 1, 8, 14, 30, 0, 0, time.UTC)},
-		{"Third win #project", time.Date(2026, 1, 8, 16, 45, 0, 0, time.UTC)},
+		{"First win #work", time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC)},
+		{"Second win #personal", time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC)},
+		{"Third win #project", time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC)},
 	}
 
 	for _, w := range wins {
@@ -100,7 +100,8 @@ func TestAddMultipleWins(t *testing.T) {
 		if got.Message != wins[i].message {
 			t.Errorf("Win %d message = %v, want %v", i, got.Message, wins[i].message)
 		}
-		if !got.Timestamp.Equal(wins[i].timestamp) {
+		// Compare only date portion since time is not stored
+		if !got.Timestamp.Truncate(24 * time.Hour).Equal(wins[i].timestamp.Truncate(24 * time.Hour)) {
 			t.Errorf("Win %d timestamp = %v, want %v", i, got.Timestamp, wins[i].timestamp)
 		}
 	}
@@ -123,11 +124,11 @@ func TestReadAllWins_SkipsInvalidLines(t *testing.T) {
 	storage := setupTestStorage(t)
 
 	// Write a mix of valid and invalid lines
-	content := `2026-01-08 10:00 | Valid win #test
+	content := `2026-01-08 | Valid win #test
 invalid line without separator
-2026-01-08 14:30 | Another valid win
+2026-01-08 | Another valid win
 bad-timestamp | Some message
-2026-01-08 16:00 | Third valid win #work
+2026-01-08 | Third valid win #work
 `
 	if err := os.WriteFile(storage.GetFilePath(), []byte(content), 0644); err != nil {
 		t.Fatalf("Failed to write test file: %v", err)
@@ -159,11 +160,11 @@ bad-timestamp | Some message
 func TestReadAllWins_SkipsBlankLines(t *testing.T) {
 	storage := setupTestStorage(t)
 
-	content := `2026-01-08 10:00 | First win
+	content := `2026-01-08 | First win
 
-2026-01-08 14:30 | Second win
+2026-01-08 | Second win
 
-2026-01-08 16:00 | Third win
+2026-01-08 | Third win
 `
 	if err := os.WriteFile(storage.GetFilePath(), []byte(content), 0644); err != nil {
 		t.Fatalf("Failed to write test file: %v", err)
@@ -184,12 +185,12 @@ func TestWriteWins(t *testing.T) {
 
 	wins := []*models.Win{
 		{
-			Timestamp: time.Date(2026, 1, 8, 10, 0, 0, 0, time.UTC),
+			Timestamp: time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC),
 			Message:   "First win #test",
 			Tags:      []string{"#test"},
 		},
 		{
-			Timestamp: time.Date(2026, 1, 8, 14, 30, 0, 0, time.UTC),
+			Timestamp: time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC),
 			Message:   "Second win #work",
 			Tags:      []string{"#work"},
 		},
@@ -225,9 +226,9 @@ func TestDeleteWin(t *testing.T) {
 		message   string
 		timestamp time.Time
 	}{
-		{"First win", time.Date(2026, 1, 8, 10, 0, 0, 0, time.UTC)},
-		{"Second win", time.Date(2026, 1, 8, 11, 0, 0, 0, time.UTC)},
-		{"Third win", time.Date(2026, 1, 8, 12, 0, 0, 0, time.UTC)},
+		{"First win", time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC)},
+		{"Second win", time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC)},
+		{"Third win", time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC)},
 	}
 
 	for _, w := range wins {
@@ -291,7 +292,7 @@ func TestUpdateWin(t *testing.T) {
 	storage := setupTestStorage(t)
 
 	// Add some wins
-	originalTime := time.Date(2026, 1, 8, 10, 0, 0, 0, time.UTC)
+	originalTime := time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC)
 	if err := storage.AddWin("Original message", originalTime); err != nil {
 		t.Fatalf("AddWin() error = %v", err)
 	}
@@ -317,8 +318,8 @@ func TestUpdateWin(t *testing.T) {
 		t.Errorf("Updated message = %v, want %v", wins[0].Message, newMessage)
 	}
 
-	// Verify timestamp was preserved
-	if !wins[0].Timestamp.Equal(originalTime) {
+	// Verify timestamp was preserved (date portion only)
+	if !wins[0].Timestamp.Truncate(24 * time.Hour).Equal(originalTime.Truncate(24 * time.Hour)) {
 		t.Errorf("Timestamp changed from %v to %v", originalTime, wins[0].Timestamp)
 	}
 }

@@ -18,7 +18,7 @@ type Win struct {
 }
 
 // ParseWin parses a line from the wins file into a Win struct
-// Expected format: "2026-01-08 14:32 | message with #tags"
+// Expected format: "2026-01-08 | message with #tags"
 func ParseWin(line string) (*Win, error) {
 	parts := strings.SplitN(line, "|", 2)
 	if len(parts) != 2 {
@@ -27,7 +27,7 @@ func ParseWin(line string) (*Win, error) {
 
 	// Parse timestamp
 	timestampStr := strings.TrimSpace(parts[0])
-	timestamp, err := time.Parse("2006-01-02 15:04", timestampStr)
+	timestamp, err := time.Parse("2006-01-02", timestampStr)
 	if err != nil {
 		return nil, fmt.Errorf("invalid timestamp: %w", err)
 	}
@@ -45,7 +45,7 @@ func ParseWin(line string) (*Win, error) {
 
 // Format returns the formatted string representation of a Win
 func (w *Win) Format() string {
-	return fmt.Sprintf("%s | %s", w.Timestamp.Format("2006-01-02 15:04"), w.Message)
+	return fmt.Sprintf("%s | %s", w.Timestamp.Format("2006-01-02"), w.Message)
 }
 
 // UpdateMessage updates the message and recalculates tags
