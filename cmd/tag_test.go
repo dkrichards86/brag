@@ -207,3 +207,65 @@ func TestAddTagDuplicate(t *testing.T) {
 		t.Error("Expected HasTag to work without # prefix")
 	}
 }
+
+func TestAddMultipleTags(t *testing.T) {
+	// Create a temporary directory for test files
+	tempDir := t.TempDir()
+
+	// Override the home directory for testing
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tempDir)
+	defer os.Setenv("HOME", originalHome)
+
+	// Create storage and add test win
+	store, err := storage.New()
+	if err != nil {
+		t.Fatalf("Failed to create storage: %v", err)
+	}
+
+	testWins := []*models.Win{
+		{
+			Timestamp: time.Date(2026, 1, 8, 14, 32, 0, 0, time.UTC),
+			Message:   "Completed feature",
+			Tags:      []string{},
+		},
+	}
+
+	if err := store.WriteWins(testWins); err != nil {
+		t.Fatalf("Failed to write test wins: %v", err)
+	}
+
+	// Add multiple tags at once
+	tags := []string{"#frontend", "#testing", "#urgent"}
+	wins, err := store.ReadAllWins()
+	if err != nil {
+		t.Fatalf("Failed to read wins: %v", err)
+	}
+
+	newMessage := wins[0].Message + " " + strings.Join(tags, " ")
+	if err := store.UpdateWin(0, newMessage); err != nil {
+		t.Fatalf("Failed to update win: %v", err)
+	}
+
+	// Verify all tags were added
+	wins, err = store.ReadAllWins()
+	if err != nil {
+		t.Fatalf("Failed to read wins after update: %v", err)
+	}
+
+	updatedWin := wins[0]
+	expectedMsg := "Completed feature #frontend #testing #urgent"
+	if updatedWin.Message != expectedMsg {
+		t.Errorf("Updated message = %q, want %q", updatedWin.Message, expectedMsg)
+	}
+
+	if len(updatedWin.Tags) != 3 {
+		t.Errorf("Number of tags = %d, want 3", len(updatedWin.Tags))
+	}
+
+	for _, tag := range tags {
+		if !updatedWin.HasTag(tag) {
+			t.Errorf("Expected win to have tag %s", tag)
+		}
+	}
+}
