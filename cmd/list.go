@@ -37,17 +37,8 @@ func init() {
 }
 
 func listWins(cmd *cobra.Command, args []string) error {
-	// Validate flag combinations
-	if listTaggedOnly && listUntaggedOnly {
-		return fmt.Errorf("cannot use --tagged and --untagged together")
-	}
-
-	if listTagFilter != "" && listUntaggedOnly {
-		return fmt.Errorf("cannot use --tag and --untagged together (--tag filters for wins with a specific tag)")
-	}
-
-	if listAll && (listFromDate != "" || listToDate != "") {
-		return fmt.Errorf("cannot use --all with --from or --to (--all shows all wins regardless of date)")
+	if err := validateListFlags(); err != nil {
+		return err
 	}
 
 	store, err := getStorage()
@@ -60,63 +51,97 @@ func listWins(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to read wins: %w", err)
 	}
 
-	// Parse date range (defaults to last 7 days, unless --all is specified)
 	from, to := parseListDateRange(listFromDate, listToDate, listAll)
+	filteredWins := filterAndIndexWins(wins, from, to)
 
-	// Filter wins and track their original indices
-	type indexedWin struct {
-		win   *models.Win
-		index int // Original index in the full wins array (1-based for display)
+	displayListResults(filteredWins, wins, from, to)
+	return nil
+}
+
+func validateListFlags() error {
+	if listTaggedOnly && listUntaggedOnly {
+		return fmt.Errorf("cannot use --tagged and --untagged together")
 	}
 
+	if listTagFilter != "" && listUntaggedOnly {
+		return fmt.Errorf("cannot use --tag and --untagged together (--tag filters for wins with a specific tag)")
+	}
+
+	if listAll && (listFromDate != "" || listToDate != "") {
+		return fmt.Errorf("cannot use --all with --from or --to (--all shows all wins regardless of date)")
+	}
+
+	return nil
+}
+
+type indexedWin struct {
+	win   *models.Win
+	index int // Original index in the full wins array (1-based for display)
+}
+
+func filterAndIndexWins(wins []*models.Win, from, to time.Time) []indexedWin {
 	var filteredWins []indexedWin
 	for i, win := range wins {
-		// Date filter
-		if win.Timestamp.Before(from) || win.Timestamp.After(to) {
-			continue
+		if shouldIncludeWin(win, from, to) {
+			filteredWins = append(filteredWins, indexedWin{win: win, index: i + 1})
 		}
+	}
+	return filteredWins
+}
 
-		// Tagged filter - only show wins that have at least one tag
-		if listTaggedOnly && len(win.Tags) == 0 {
-			continue
-		}
-
-		// Untagged filter - only show wins without tags
-		if listUntaggedOnly && len(win.Tags) > 0 {
-			continue
-		}
-
-		// Tag filter - show wins with a specific tag
-		if listTagFilter != "" && !win.HasTag(listTagFilter) {
-			continue
-		}
-
-		filteredWins = append(filteredWins, indexedWin{win: win, index: i + 1})
+func shouldIncludeWin(win *models.Win, from, to time.Time) bool {
+	// Date filter
+	if win.Timestamp.Before(from) || win.Timestamp.After(to) {
+		return false
 	}
 
+	// Tagged filter - only show wins that have at least one tag
+	if listTaggedOnly && len(win.Tags) == 0 {
+		return false
+	}
+
+	// Untagged filter - only show wins without tags
+	if listUntaggedOnly && len(win.Tags) > 0 {
+		return false
+	}
+
+	// Tag filter - show wins with a specific tag
+	if listTagFilter != "" && !win.HasTag(listTagFilter) {
+		return false
+	}
+
+	return true
+}
+
+func displayListResults(filteredWins []indexedWin, allWins []*models.Win, from, to time.Time) {
 	if len(filteredWins) == 0 {
-		if len(wins) == 0 {
-			fmt.Println("No wins found. Add your first win with: brag \"your achievement here\"")
-		} else {
-			fmt.Println("No wins found for the specified criteria.")
-			fmt.Println("Try adjusting your filters or use 'brag list' to see all recent wins.")
-		}
-		return nil
+		displayNoWinsMessage(allWins)
+		return
 	}
 
-	// Display wins with their actual file line numbers
+	displayListHeader(from, to)
+	for _, iw := range filteredWins {
+		fmt.Printf("%d. %s\n", iw.index, iw.win.Format())
+	}
+	fmt.Printf("\nTotal: %d wins\n", len(filteredWins))
+}
+
+func displayNoWinsMessage(allWins []*models.Win) {
+	if len(allWins) == 0 {
+		fmt.Println("No wins found. Add your first win with: brag \"your achievement here\"")
+	} else {
+		fmt.Println("No wins found for the specified criteria.")
+		fmt.Println("Try adjusting your filters or use 'brag list' to see all recent wins.")
+	}
+}
+
+func displayListHeader(from, to time.Time) {
 	if listAll {
 		fmt.Println("All wins:")
 		fmt.Println()
 	} else {
 		fmt.Printf("Wins from %s to %s:\n\n", from.Format("2006-01-02"), to.Format("2006-01-02"))
 	}
-	for _, iw := range filteredWins {
-		fmt.Printf("%d. %s\n", iw.index, iw.win.Format())
-	}
-
-	fmt.Printf("\nTotal: %d wins\n", len(filteredWins))
-	return nil
 }
 
 func parseListDateRange(fromStr, toStr string, showAll bool) (time.Time, time.Time) {

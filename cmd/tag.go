@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/dkrichards86/brag/internal/models"
+	"github.com/dkrichards86/brag/internal/storage"
 	"github.com/spf13/cobra"
 )
 
@@ -21,43 +23,37 @@ func init() {
 }
 
 func addTag(cmd *cobra.Command, args []string) {
-	store, err := getStorage()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+	store, index := mustGetStorageAndIndex(args[0])
+	tags := normalizeTags(args[1:])
+	wins := mustReadWins(store)
+	mustValidateIndex(index, len(wins))
+
+	win := wins[index]
+	newTags, existingTags := partitionNewAndExistingTags(win, tags)
+
+	if len(newTags) == 0 {
+		displayAllTagsExistMessage(existingTags)
+		return
 	}
 
-	// Parse line number (supports "last" keyword)
-	index, err := parseLineNumber(args[0], store)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
+	newMessage := win.Message + " " + strings.Join(newTags, " ")
+	mustUpdateWin(store, index, newMessage)
+	displayAddTagResults(newTags, existingTags, index)
+}
 
-	// Process all tags and ensure they start with #
+func normalizeTags(args []string) []string {
 	var tags []string
-	for _, arg := range args[1:] {
+	for _, arg := range args {
 		tag := strings.TrimSpace(arg)
 		if !strings.HasPrefix(tag, "#") {
 			tag = "#" + tag
 		}
 		tags = append(tags, tag)
 	}
+	return tags
+}
 
-	wins, err := store.ReadAllWins()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading wins: %v\n", err)
-		os.Exit(1)
-	}
-
-	if index < 0 || index >= len(wins) {
-		fmt.Fprintf(os.Stderr, "Error: line number is out of range (1-%d)\n", len(wins))
-		os.Exit(1)
-	}
-
-	win := wins[index]
-
-	// Check which tags are new and which already exist
+func partitionNewAndExistingTags(win interface{ HasTag(string) bool }, tags []string) ([]string, []string) {
 	var newTags []string
 	var existingTags []string
 	for _, tag := range tags {
@@ -67,27 +63,18 @@ func addTag(cmd *cobra.Command, args []string) {
 			newTags = append(newTags, tag)
 		}
 	}
+	return newTags, existingTags
+}
 
-	// If all tags already exist, nothing to do
-	if len(newTags) == 0 {
-		if len(existingTags) == 1 {
-			fmt.Printf("Tag %s already exists on this win.\n", existingTags[0])
-		} else {
-			fmt.Printf("Tags %s already exist on this win.\n", strings.Join(existingTags, ", "))
-		}
-		return
+func displayAllTagsExistMessage(existingTags []string) {
+	if len(existingTags) == 1 {
+		fmt.Printf("Tag %s already exists on this win.\n", existingTags[0])
+	} else {
+		fmt.Printf("Tags %s already exist on this win.\n", strings.Join(existingTags, ", "))
 	}
+}
 
-	// Add the new tags to the message
-	newMessage := win.Message + " " + strings.Join(newTags, " ")
-
-	// Update the win
-	if err := store.UpdateWin(index, newMessage); err != nil {
-		fmt.Fprintf(os.Stderr, "Error updating win: %v\n", err)
-		os.Exit(1)
-	}
-
-	// Report results
+func displayAddTagResults(newTags, existingTags []string, index int) {
 	if len(newTags) == 1 {
 		fmt.Printf("Added tag %s to win #%d\n", newTags[0], index+1)
 	} else {
@@ -100,5 +87,44 @@ func addTag(cmd *cobra.Command, args []string) {
 		} else {
 			fmt.Printf("(Tags %s were already present)\n", strings.Join(existingTags, ", "))
 		}
+	}
+}
+
+func mustGetStorageAndIndex(lineArg string) (*storage.Storage, int) {
+	store, err := getStorage()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	index, err := parseLineNumber(lineArg, store)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	return store, index
+}
+
+func mustReadWins(store *storage.Storage) []*models.Win {
+	wins, err := store.ReadAllWins()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading wins: %v\n", err)
+		os.Exit(1)
+	}
+	return wins
+}
+
+func mustValidateIndex(index, winsCount int) {
+	if index < 0 || index >= winsCount {
+		fmt.Fprintf(os.Stderr, "Error: line number is out of range (1-%d)\n", winsCount)
+		os.Exit(1)
+	}
+}
+
+func mustUpdateWin(store *storage.Storage, index int, newMessage string) {
+	if err := store.UpdateWin(index, newMessage); err != nil {
+		fmt.Fprintf(os.Stderr, "Error updating win: %v\n", err)
+		os.Exit(1)
 	}
 }
