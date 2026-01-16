@@ -111,7 +111,7 @@ func TestListWinsIntegration(t *testing.T) {
 			// Apply the same filtering logic as listWins
 			var filteredWins []*models.Win
 			if tt.fromDate != "" || tt.toDate != "" {
-				from, to := parseListDateRange(tt.fromDate, tt.toDate)
+				from, to := parseListDateRange(tt.fromDate, tt.toDate, false)
 				for _, win := range wins {
 					if !win.Timestamp.Before(from) && !win.Timestamp.After(to) {
 						filteredWins = append(filteredWins, win)
@@ -268,7 +268,7 @@ func TestListWinsDateFiltering(t *testing.T) {
 	}
 
 	// Test filtering by year
-	from, to := parseListDateRange("2026-01-01", "2026-01-31")
+	from, to := parseListDateRange("2026-01-01", "2026-01-31", false)
 	var filtered []*models.Win
 	for _, win := range wins {
 		if !win.Timestamp.Before(from) && !win.Timestamp.After(to) {
@@ -383,7 +383,7 @@ func TestListWinsLineNumbersWithFiltering(t *testing.T) {
 
 	// Simulate filtering by tag "work" (like `brag list --tag work`)
 	// This should return wins at file positions 1, 3, 6, 8, 10
-	from, to := parseListDateRange("", "") // Use default range
+	from, to := parseListDateRange("", "", false) // Use default range
 
 	type indexedWin struct {
 		win   *models.Win

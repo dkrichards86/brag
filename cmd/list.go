@@ -15,6 +15,7 @@ var (
 	listTagFilter    string
 	listTaggedOnly   bool
 	listUntaggedOnly bool
+	listAll          bool
 )
 
 var listCmd = &cobra.Command{
@@ -32,9 +33,23 @@ func init() {
 	listCmd.Flags().StringVar(&listTagFilter, "tag", "", "Filter by tag (e.g., 'work' or '#work')")
 	listCmd.Flags().BoolVar(&listTaggedOnly, "tagged", false, "Show only wins that have tags")
 	listCmd.Flags().BoolVar(&listUntaggedOnly, "untagged", false, "Show only wins without tags")
+	listCmd.Flags().BoolVarP(&listAll, "all", "a", false, "Show all wins (no date filter)")
 }
 
 func listWins(cmd *cobra.Command, args []string) error {
+	// Validate flag combinations
+	if listTaggedOnly && listUntaggedOnly {
+		return fmt.Errorf("cannot use --tagged and --untagged together")
+	}
+
+	if listTagFilter != "" && listUntaggedOnly {
+		return fmt.Errorf("cannot use --tag and --untagged together (--tag filters for wins with a specific tag)")
+	}
+
+	if listAll && (listFromDate != "" || listToDate != "") {
+		return fmt.Errorf("cannot use --all with --from or --to (--all shows all wins regardless of date)")
+	}
+
 	store, err := getStorage()
 	if err != nil {
 		return fmt.Errorf("failed to initialize storage: %w", err)
@@ -45,8 +60,8 @@ func listWins(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to read wins: %w", err)
 	}
 
-	// Parse date range (defaults to last 7 days)
-	from, to := parseListDateRange(listFromDate, listToDate)
+	// Parse date range (defaults to last 7 days, unless --all is specified)
+	from, to := parseListDateRange(listFromDate, listToDate, listAll)
 
 	// Filter wins and track their original indices
 	type indexedWin struct {
@@ -80,12 +95,22 @@ func listWins(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(filteredWins) == 0 {
-		fmt.Println("No wins found for the specified criteria.")
+		if len(wins) == 0 {
+			fmt.Println("No wins found. Add your first win with: brag \"your achievement here\"")
+		} else {
+			fmt.Println("No wins found for the specified criteria.")
+			fmt.Println("Try adjusting your filters or use 'brag list' to see all recent wins.")
+		}
 		return nil
 	}
 
 	// Display wins with their actual file line numbers
-	fmt.Printf("Wins from %s to %s:\n\n", from.Format("2006-01-02"), to.Format("2006-01-02"))
+	if listAll {
+		fmt.Println("All wins:")
+		fmt.Println()
+	} else {
+		fmt.Printf("Wins from %s to %s:\n\n", from.Format("2006-01-02"), to.Format("2006-01-02"))
+	}
 	for _, iw := range filteredWins {
 		fmt.Printf("%d. %s\n", iw.index, iw.win.Format())
 	}
@@ -94,7 +119,16 @@ func listWins(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func parseListDateRange(fromStr, toStr string) (time.Time, time.Time) {
+func parseListDateRange(fromStr, toStr string, showAll bool) (time.Time, time.Time) {
+	// If --all is specified, return a very wide date range
+	if showAll {
+		// From: year 2000 (before brag existed)
+		from := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+		// To: far future
+		to := time.Date(2100, 12, 31, 23, 59, 59, 0, time.UTC)
+		return from, to
+	}
+
 	// Default: last 7 days to today
 	to := time.Now()
 	from := to.AddDate(0, 0, -7)
